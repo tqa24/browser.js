@@ -21,8 +21,6 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
 	},
 	/// `cfg.setrealmfn({}).ident`
 	SetRealmFn,
-	/// `cfg.wrapthis(this)`
-	WrapThisFn,
 
 	/// `(cfg.importfn("cfg.base"))`
 	ImportFn,
@@ -30,10 +28,17 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
 	MetaFn,
 
 	/// `window.location` -> cfg.wraplocation(window)
-	WrapAccess {
+	WrapGet {
     	ident: Atom<'data>,
         propspan: Span,
         enclose: bool,
+	},
+	/// `window.location` -> cfg.wraplocation(window)
+	WrapSet {
+    	ident: Atom<'data>,
+        propspan: Span,
+        leftspan: Span,
+        rightspan: Span,
 	},
 	// dead code only if debug is disabled
 	#[allow(dead_code)]
@@ -104,31 +109,36 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 				change!(span!(start), WrapFnLeft { enclose }),
 				change!(span!(end), WrapFnRight { enclose }),
 			],
-			Self::WrapAccess {
+			Self::WrapGet {
     			ident,
                 propspan,
                 enclose,
 			} => smallvec![
-	    		change!(span!(start), WrapAccessLeft {
+	    		change!(span!(start), WrapGetLeft {
 					ident,
 					enclose,
 				}),
 				change!(propspan, Delete),
-				change!(span!(end), WrapAccessRight {
+				change!(span!(end), WrapGetRight {
                     enclose,
                 }),
 			],
-			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
-			Self::WrapThisFn => smallvec![
-				change!(span!(start), WrapThisFn),
-				change!(
+			Self::WrapSet { ident, propspan, leftspan, rightspan } => smallvec![
+                change!(span!(start), WrapSet {
+                    ident,
+                    propspan,
+                }),
+                change!(propspan, Delete),
+                change!(Span::new(leftspan.end, rightspan.start), Replace { text: "," }),
+                change!(
 					span!(end),
 					ClosingParen {
 						semi: false,
-						replace: false
+						replace: true
 					}
-				),
-			],
+				)
+            ],
+			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::ImportFn => smallvec![change!(span, ImportFn)],
 			Self::MetaFn => smallvec![change!(span, MetaFn)],
 			Self::ScramErr { ident } => smallvec![change!(span!(end), ScramErrFn { ident })],

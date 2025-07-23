@@ -135,7 +135,7 @@ where
 			}
 
 			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
- 			    self.jschanges.add(rewrite!(it.span(), WrapAccess {
+ 			    self.jschanges.add(rewrite!(it.span(), WrapGet {
                     ident: s.property.name,
  			        propspan: Span::new(s.property.span.start-1, s.property.span.end),
                     enclose: false,
@@ -170,9 +170,6 @@ where
 
 
 		walk::walk_member_expression(self, it);
-	}
-	fn visit_this_expression(&mut self, it: &ThisExpression) {
-		self.jschanges.add(rewrite!(it.span, WrapThisFn));
 	}
 
 	fn visit_debugger_statement(&mut self, it: &DebuggerStatement) {
@@ -291,9 +288,9 @@ where
 		walk::walk_unary_expression(self, it);
 	}
 
-	fn visit_update_expression(&mut self, _it: &UpdateExpression<'data>) {
-		// then no, don't walk it, we don't care
-	}
+	// fn visit_update_expression(&mut self, _it: &UpdateExpression<'data>) {
+	// 	// this is like a ++ or -- operator
+	// }
 
 	fn visit_meta_property(&mut self, it: &MetaProperty<'data>) {
 		if it.meta.name == "import" {
@@ -318,6 +315,19 @@ where
 					// somehow
 					return;
 				}
+			}
+			AssignmentTarget::StaticMemberExpression(s) =>{
+                if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
+                    self.jschanges.add(rewrite!(it.span, WrapSet {
+                        ident: s.property.name,
+                        propspan: Span::new(s.property.span.start-1, s.property.span.end),
+                        leftspan: s.span(),
+                        rightspan: it.right.span(),
+                    }));
+                }
+
+                // more to walk
+                walk::walk_expression(self, &s.object);
 			}
 			AssignmentTarget::ArrayAssignmentTarget(_) => {
 				// [location] = ["https://example.com"]

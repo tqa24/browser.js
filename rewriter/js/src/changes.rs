@@ -34,18 +34,21 @@ pub enum JsChangeType<'alloc: 'data, 'data> {
 	/// insert `,strictchecker)`
 	WrapFnRight { enclose: bool },
 
-	WrapAccessLeft {
+	WrapGetLeft {
     	ident: Atom<'data>,
        	enclose: bool,
 	},
-	WrapAccessRight {
+	WrapGetRight {
         enclose: bool,
+    },
+
+    WrapSet {
+       	ident: Atom<'data>,
+        propspan: Span
     },
 
 	/// insert `${cfg.setrealmfn}({}).`
 	SetRealmFn,
-	/// insert `${cfg.wrapthis}(`
-	WrapThisFn,
 	/// insert `$scramerr(ident);`
 	ScramErrFn { ident: Atom<'data> },
 	/// insert `$scramitize(`
@@ -113,19 +116,25 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 			} else {
 				transforms![",", STRICTCHECKER, ")"]
 			}),
-			Ty::WrapAccessLeft {
+			Ty::WrapGetLeft {
     			ident,
         		enclose,
-			} => if enclose {
-			LL::insert(transforms!["(", "$scramjet$wrap", ident, "("])
-			} else {LL::insert(transforms!["$scramjet$wrap", ident, "("])},
-			Ty::WrapAccessRight { enclose } => LL::insert(if enclose {
-						transforms!["))"]
-					} else {
-						transforms![")"]
-					}),
+			} => LL::insert(if enclose {
+			    transforms!["(", &cfg.wrapgetbase, ident, "("]
+			} else {
+		    	transforms![&cfg.wrapgetbase, ident, "("]
+			}),
+			Ty::WrapGetRight { enclose } => LL::insert(if enclose {
+				transforms!["))"]
+			} else {
+				transforms![")"]
+			}),
+			Ty::WrapSet { ident, propspan } => LL::insert(transforms![
+    			&cfg.wrapsetbase,
+    			ident,
+    			"("
+			]),
 			Ty::SetRealmFn => LL::insert(transforms![&cfg.setrealmfn, "({})."]),
-			Ty::WrapThisFn => LL::insert(transforms![&cfg.wrapthisfn, "("]),
 			Ty::ScramErrFn { ident } => LL::insert(transforms!["$scramerr(", ident, ");"]),
 			Ty::ScramitizeFn => LL::insert(transforms![" $scramitize("]),
 			Ty::EvalRewriteFn => LL::replace(transforms!["eval(", &cfg.rewritefn, "("]),
