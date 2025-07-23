@@ -23,16 +23,10 @@ use crate::{
 //
 // maybe move this out of this lib?
 const UNSAFE_GLOBALS: &[&str] = &[
-	"window",
-	"self",
-	"globalThis",
-	"this",
 	"parent",
 	"top",
 	"location",
-	"document",
-	"eval",
-	"frames",
+	"eval"
 ];
 
 pub struct Visitor<'alloc, 'data, E>
@@ -71,17 +65,25 @@ where
 
 	fn rewrite_ident(&mut self, name: &Atom, span: Span) {
 		if UNSAFE_GLOBALS.contains(&name.as_str()) {
-			self.jschanges.add(rewrite!(span, WrapFn { wrap: true }));
+			self.jschanges.add(rewrite!(span, WrapFn { enclose: true }));
 		}
 	}
 
 	fn walk_member_expression(&mut self, it: &Expression) -> bool {
 		match it {
 			Expression::Identifier(s) => {
-				self.rewrite_ident(&s.name, s.span);
-				true
+				false
 			}
-			Expression::StaticMemberExpression(s) => self.walk_member_expression(&s.object),
+			Expression::StaticMemberExpression(s) => {
+    			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
+    			    // self.jschanges.add(rewrite!(s.span, WrapAccess {
+           //          ident: s.property.name,
+           //          propspan: s.property.span,
+           //      }
+           // ));
+    			}
+			    self.walk_member_expression(&s.object)
+			},
 			Expression::ComputedMemberExpression(s) => self.walk_member_expression(&s.object),
 			_ => false,
 		}
@@ -109,7 +111,7 @@ where
 		//
 		if UNSAFE_GLOBALS.contains(&it.name.as_str()) {
 			self.jschanges
-				.add(rewrite!(it.span, WrapFn { wrap: false }));
+				.add(rewrite!(it.span, WrapFn { enclose: false }));
 		}
 		// }
 	}
@@ -132,20 +134,40 @@ where
 				return; // unwise to walk the rest of the tree
 			}
 
-			if !self.flags.strict_rewrites
-				&& !UNSAFE_GLOBALS.contains(&s.property.name.as_str())
-				&& let Expression::Identifier(_) | Expression::ThisExpression(_) = &s.object
-			{
-				// cull tree - this should be safe
-				return;
-			}
+			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
+ 			    self.jschanges.add(rewrite!(it.span(), WrapAccess {
+                    ident: s.property.name,
+ 			        propspan: Span::new(s.property.span.start-1, s.property.span.end),
+                    enclose: false,
+                }));
+ 			}
+			// if !self.flags.strict_rewrites
+			// 	&& !UNSAFE_GLOBALS.contains(&s.property.name.as_str())
+			// 	&& let Expression::Identifier(_) | Expression::ThisExpression(_) = &s.object
+			// {
+			// 	// cull tree - this should be safe
+			// 	return;
+			// }
 
-			if self.flags.scramitize
-				&& !matches!(s.object, Expression::MetaProperty(_) | Expression::Super(_))
-			{
-				self.scramitize(s.object.span());
-			}
+			// if self.flags.scramitize
+			// 	&& !matches!(s.object, Expression::MetaProperty(_) | Expression::Super(_))
+			// {
+			// 	self.scramitize(s.object.span());
+			// }
 		}
+
+		match &it.object() {
+    		Expression::Identifier(_) => {
+                return;
+    		}
+            Expression::ThisExpression(_)=> {
+                // this is safe, we don't need to walk it
+                return;
+    		}
+            _=>{}
+		}
+
+
 
 		walk::walk_member_expression(self, it);
 	}

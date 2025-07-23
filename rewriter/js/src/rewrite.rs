@@ -17,17 +17,24 @@ pub(crate) use rewrite;
 pub(crate) enum RewriteType<'alloc: 'data, 'data> {
 	/// `(cfg.wrapfn(ident,strictchecker))` | `cfg.wrapfn(ident,strictchecker)`
 	WrapFn {
-		wrap: bool,
+		enclose: bool,
 	},
 	/// `cfg.setrealmfn({}).ident`
 	SetRealmFn,
 	/// `cfg.wrapthis(this)`
 	WrapThisFn,
+
 	/// `(cfg.importfn("cfg.base"))`
 	ImportFn,
 	/// `cfg.metafn("cfg.base")`
 	MetaFn,
 
+	/// `window.location` -> cfg.wraplocation(window)
+	WrapAccess {
+    	ident: Atom<'data>,
+        propspan: Span,
+        enclose: bool,
+	},
 	// dead code only if debug is disabled
 	#[allow(dead_code)]
 	/// `$scramerr(name)`
@@ -93,9 +100,23 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 		}
 
 		match self {
-			Self::WrapFn { wrap } => smallvec![
-				change!(span!(start), WrapFnLeft { wrap }),
-				change!(span!(end), WrapFnRight { wrap }),
+			Self::WrapFn { enclose } => smallvec![
+				change!(span!(start), WrapFnLeft { enclose }),
+				change!(span!(end), WrapFnRight { enclose }),
+			],
+			Self::WrapAccess {
+    			ident,
+                propspan,
+                enclose,
+			} => smallvec![
+	    		change!(span!(start), WrapAccessLeft {
+					ident,
+					enclose,
+				}),
+				change!(propspan, Delete),
+				change!(span!(end), WrapAccessRight {
+                    enclose,
+                }),
 			],
 			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::WrapThisFn => smallvec![
