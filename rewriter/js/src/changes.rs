@@ -38,6 +38,9 @@ pub enum JsChangeType<'alloc: 'data, 'data> {
     	ident: Atom<'data>,
        	enclose: bool,
 	},
+	WrapGetComputedLeft {
+       	enclose: bool,
+    },
 	WrapGetRight {
         enclose: bool,
     },
@@ -124,6 +127,11 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 			} else {
 		    	transforms![&cfg.wrapgetbase, ident, "("]
 			}),
+			Ty::WrapGetComputedLeft { enclose } => LL::insert(if enclose {
+                transforms!["(", &cfg.wrapcomputedgetfn, "("]
+            } else {
+                transforms![&cfg.wrapcomputedgetfn, "("]
+            }),
 			Ty::WrapGetRight { enclose } => LL::insert(if enclose {
 				transforms!["))"]
 			} else {

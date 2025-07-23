@@ -33,6 +33,12 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
         propspan: Span,
         enclose: bool,
 	},
+	/// `window["location"]` -> cfg.wrapgetcomputed(window, "location")
+	WrapGetComputed {
+	    leftspan: Span,
+        propspan: Span,
+        enclose: bool,
+	},
 	/// `window.location` -> cfg.wraplocation(window)
 	WrapSet {
     	ident: Atom<'data>,
@@ -40,6 +46,12 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
         leftspan: Span,
         rightspan: Span,
 	},
+	/// `cfg.wrapcomputedsetfn(window, "location", t)`
+	WrapSetComputed {
+        propspan: Span,
+        leftspan: Span,
+        rightspan: Span,
+    },
 	// dead code only if debug is disabled
 	#[allow(dead_code)]
 	/// `$scramerr(name)`
@@ -123,6 +135,16 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
                     enclose,
                 }),
 			],
+			Self::WrapGetComputed { leftspan, propspan, enclose } => smallvec![
+			    change!(span!(start), WrapGetComputedLeft {
+					enclose
+		        }),
+				// replace the bracket with ,
+				change!(Span::new(leftspan.end, propspan.start), Replace { text: "," }),
+				// replace the other bracket with )
+				change!(Span::new(propspan.end, propspan.end + 1), ClosingParen { semi: false, replace: true }),
+
+			],
 			Self::WrapSet { ident, propspan, leftspan, rightspan } => smallvec![
                 change!(span!(start), WrapSet {
                     ident,
@@ -138,6 +160,7 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 					}
 				)
             ],
+            RewriteType::WrapSetComputed { .. } => todo!(),
 			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::ImportFn => smallvec![change!(span, ImportFn)],
 			Self::MetaFn => smallvec![change!(span, MetaFn)],

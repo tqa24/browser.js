@@ -122,25 +122,35 @@ where
 	}
 
 	fn visit_member_expression(&mut self, it: &MemberExpression<'data>) {
-		// TODO
-		// you could break this with ["postMessage"] etc
-		// however this code only exists because of recaptcha whatever
-		// and it would slow down js execution a lot
-		if let MemberExpression::StaticMemberExpression(s) = it {
-			if s.property.name == "postMessage" {
-				self.jschanges.add(rewrite!(s.property.span, SetRealmFn));
+		match  &it {
+		    MemberExpression::StaticMemberExpression(s) =>{
+				// TODO
+				// you could break this with ["postMessage"] etc
+				// however this code only exists because of recaptcha whatever
+				// and it would slow down js execution a lot
+    			if s.property.name == "postMessage" {
+    				self.jschanges.add(rewrite!(s.property.span, SetRealmFn));
 
-				walk::walk_expression(self, &s.object);
-				return; // unwise to walk the rest of the tree
+    				walk::walk_expression(self, &s.object);
+    				return; // unwise to walk the rest of the tree
+    			}
+
+    			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
+     			    self.jschanges.add(rewrite!(it.span(), WrapGet {
+                        ident: s.property.name,
+     			        propspan: Span::new(s.property.span.start-1, s.property.span.end),
+                        enclose: false,
+                    }));
+     			}
 			}
-
-			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
- 			    self.jschanges.add(rewrite!(it.span(), WrapGet {
-                    ident: s.property.name,
- 			        propspan: Span::new(s.property.span.start-1, s.property.span.end),
+			MemberExpression::ComputedMemberExpression(s) => {
+                self.jschanges.add(rewrite!(it.span(), WrapGetComputed {
+                    leftspan: s.object.span(),
+                    propspan: s.expression.span(),
                     enclose: false,
                 }));
- 			}
+            }
+            _=>{}
 			// if !self.flags.strict_rewrites
 			// 	&& !UNSAFE_GLOBALS.contains(&s.property.name.as_str())
 			// 	&& let Expression::Identifier(_) | Expression::ThisExpression(_) = &s.object
