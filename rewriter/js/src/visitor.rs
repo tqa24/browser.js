@@ -166,18 +166,6 @@ where
 			// }
 		}
 
-		match &it.object() {
-    		Expression::Identifier(_) => {
-                return;
-    		}
-            Expression::ThisExpression(_)=> {
-                // this is safe, we don't need to walk it
-                return;
-    		}
-            _=>{}
-		}
-
-
 
 		walk::walk_member_expression(self, it);
 	}
