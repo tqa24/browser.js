@@ -15,7 +15,7 @@ pub(crate) use rewrite;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum RewriteType<'alloc: 'data, 'data> {
-	/// `(cfg.wrapfn(ident,strictchecker))` | `cfg.wrapfn(ident,strictchecker)`
+	/// `(cfg.wrapfn(ident))` | `cfg.wrapfn(ident)`
 	WrapFn {
 		enclose: bool,
 	},

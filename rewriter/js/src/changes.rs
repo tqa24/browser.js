@@ -17,8 +17,6 @@ use crate::{
 	rewrite::Rewrite,
 };
 
-// const STRICTCHECKER: &str = "(function(a){arguments[0]=false;return a})(true)";
-const STRICTCHECKER: &str = "(function(){return!this;})()";
 
 macro_rules! change {
     ($span:expr, $($ty:tt)*) => {
@@ -31,7 +29,7 @@ pub(crate) use change;
 pub enum JsChangeType<'alloc: 'data, 'data> {
 	/// insert `${cfg.wrapfn}(`
 	WrapFnLeft { enclose: bool },
-	/// insert `,strictchecker)`
+	/// insert `)`
 	WrapFnRight { enclose: bool },
 
 	WrapGetLeft {
@@ -107,6 +105,7 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 		(cfg, flags): &Self::ToLowLevelData,
 		offset: i32,
 	) -> TransformLL<'data> {
+	dbg!(&self);
 		use JsChangeType as Ty;
 		use TransformLL as LL;
 		match self.ty {
@@ -116,9 +115,9 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 				transforms![&cfg.wrapfn, "("]
 			}),
 			Ty::WrapFnRight { enclose } => LL::insert(if enclose {
-				transforms![",", STRICTCHECKER, "))"]
+				transforms!["))"]
 			} else {
-				transforms![",", STRICTCHECKER, ")"]
+				transforms![")"]
 			}),
 			Ty::WrapGetLeft {
     			ident,
