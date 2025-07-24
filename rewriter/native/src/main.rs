@@ -25,8 +25,14 @@ pub struct RewriterOptions {
 	prefix: String,
 	#[clap(long, default_value = "$wrap")]
 	wrapfn: String,
-	#[clap(long, default_value = "$gwrap")]
-	wrapthisfn: String,
+	#[clap(long, default_value = "$get_")]
+	wrapgetbase: String,
+	#[clap(long, default_value = "$set_")]
+	wrapsetbase: String,
+	#[clap(long, default_value = "$computedget")]
+	wrapcomputedgetfn: String,
+	#[clap(long, default_value = "$computedset")]
+	wrapcomputedsetfn: String,
 	#[clap(long, default_value = "$import")]
 	importfn: String,
 	#[clap(long, default_value = "$rewrite")]
@@ -102,6 +108,10 @@ fn main() -> Result<()> {
 			);
 
 			let unrewritten = NativeRewriter::unrewrite(&res);
+			// println!(
+			//     "unrewritten:\n{}",
+   //              str::from_utf8(&unrewritten).context("failed to parse unrewritten js")?
+			// );
 
 			eprintln!("errors:");
 			for err in res.errors {

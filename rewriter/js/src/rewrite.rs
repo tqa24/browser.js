@@ -101,6 +101,8 @@ impl<'alloc: 'data, 'data> Rewrite<'alloc, 'data> {
 
 impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 	fn into_inner(self, span: Span) -> SmallVec<[JsChange<'alloc, 'data>; 2]> {
+
+	dbg!(&self);
 		macro_rules! span {
 			(start) => {
 				Span::new(span.start, span.start)
@@ -130,8 +132,8 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 					ident,
 					enclose,
 				}),
-				change!(propspan, Delete),
-				change!(span!(end), WrapGetRight {
+				// change!(propspan, Delete),
+				change!(Span::new(propspan.start-1, propspan.end), WrapGetRight {
                     enclose,
                 }),
 			],

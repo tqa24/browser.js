@@ -132,7 +132,7 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
             } else {
                 transforms![&cfg.wrapcomputedgetfn, "("]
             }),
-			Ty::WrapGetRight { enclose } => LL::insert(if enclose {
+			Ty::WrapGetRight { enclose } => LL::replace(if enclose {
 				transforms!["))"]
 			} else {
 				transforms![")"]

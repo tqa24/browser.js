@@ -138,7 +138,7 @@ where
     			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
      			    self.jschanges.add(rewrite!(it.span(), WrapGet {
                         ident: s.property.name,
-     			        propspan: Span::new(s.property.span.start-1, s.property.span.end),
+     			        propspan: Span::new(s.property.span.start, s.property.span.end),
                         enclose: false,
                     }));
      			}
