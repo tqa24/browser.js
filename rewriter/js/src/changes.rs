@@ -150,7 +150,7 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 			Ty::SetRealmFn => LL::insert(transforms![&cfg.setrealmfn, "({})."]),
 			Ty::ScramErrFn { ident } => LL::insert(transforms!["$scramerr(", ident, ");"]),
 			Ty::ScramitizeFn => LL::insert(transforms![" $scramitize("]),
-			Ty::EvalRewriteFn => LL::replace(transforms!["eval(", &cfg.rewritefn, "("]),
+			Ty::EvalRewriteFn => LL::insert(transforms![&cfg.rewritefn, "("]),
 			Ty::ShorthandObj { ident } => {
 				LL::insert(transforms![":", &cfg.wrapfn, "(", ident, ")"])
 			}

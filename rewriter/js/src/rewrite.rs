@@ -130,8 +130,9 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 					ident,
 					enclose,
 				}),
-				// change!(propspan, Delete),
-				change!(Span::new(propspan.start-1, propspan.end), WrapGetRight {
+				change!(propspan, Delete),
+				change!(Span::new(propspan.start-1, propspan.start), Delete),
+				change!(Span::new(propspan.end, propspan.end), WrapGetRight {
                     enclose,
                 }),
 			],
@@ -194,7 +195,7 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 					span!(inner span end),
 					ClosingParen {
 						semi: false,
-						replace: true
+						replace: false,
 					}
 				)
 			],

@@ -184,7 +184,7 @@ where
 				self.jschanges.add(rewrite!(
 					it.span,
 					Eval {
-						inner: Span::new(s.span.end + 1, it.span.end),
+						inner: Span::new(s.span.end+1, it.span.end-1),
 					}
 				));
 
