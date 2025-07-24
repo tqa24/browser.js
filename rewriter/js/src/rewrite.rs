@@ -162,7 +162,20 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 					}
 				)
             ],
-            RewriteType::WrapSetComputed { .. } => todo!(),
+            RewriteType::WrapSetComputed { leftspan, rightspan, propspan } => smallvec![
+                change!(span!(start), WrapSetComputed),
+                // replace the bracket with ,
+				change!(Span::new(leftspan.end, propspan.start), Replace { text: "," }),
+				// replace the other bracket with another ,
+				change!(Span::new(propspan.end, rightspan.start), Replace { text: "," }),
+				change!(
+					span!(end),
+					ClosingParen {
+						semi: false,
+						replace: true
+					}
+				)
+            ],
 			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::ImportFn => smallvec![change!(span, ImportFn)],
 			Self::MetaFn => smallvec![change!(span, MetaFn)],

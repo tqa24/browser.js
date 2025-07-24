@@ -339,6 +339,15 @@ where
                 // more to walk
                 walk::walk_expression(self, &s.object);
 			}
+			AssignmentTarget::ComputedMemberExpression(s)=> {
+                self.jschanges.add(rewrite!(it.span, WrapSetComputed {
+                    propspan: s.expression.span(),
+                    leftspan: s.object.span(),
+                    rightspan: it.right.span(),
+                }));
+                walk::walk_expression(self, &s.object);
+                walk::walk_expression(self, &s.expression);
+			}
 			AssignmentTarget::ArrayAssignmentTarget(_) => {
 				// [location] = ["https://example.com"]
 				// this is such a ridiculously specific edge case. just ignore it

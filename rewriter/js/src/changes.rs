@@ -49,6 +49,7 @@ pub enum JsChangeType<'alloc: 'data, 'data> {
        	ident: Atom<'data>,
         propspan: Span
     },
+    WrapSetComputed,
 
 	/// insert `${cfg.setrealmfn}({}).`
 	SetRealmFn,
@@ -141,6 +142,10 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
     			&cfg.wrapsetbase,
     			ident,
     			"("
+			]),
+			Ty::WrapSetComputed => LL::insert(transforms![
+			    &cfg.wrapcomputedsetfn,
+				"("
 			]),
 			Ty::SetRealmFn => LL::insert(transforms![&cfg.setrealmfn, "({})."]),
 			Ty::ScramErrFn { ident } => LL::insert(transforms!["$scramerr(", ident, ");"]),
