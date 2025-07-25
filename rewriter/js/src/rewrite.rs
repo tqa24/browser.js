@@ -27,31 +27,31 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
 	/// `cfg.metafn("cfg.base")`
 	MetaFn,
 
-	/// `window.location` -> cfg.wraplocation(window)
+	/// `window.attr` -> cfg.wrapattr(window)
 	WrapGet {
-    	ident: Atom<'data>,
-        propspan: Span,
-        enclose: bool,
+		ident: Atom<'data>,
+		propspan: Span,
+		enclose: bool,
 	},
-	/// `window["location"]` -> cfg.wrapgetcomputed(window, "location")
+	/// `window["attr"]` -> cfg.wrapgetcomputed(window, "attr")
 	WrapGetComputed {
-	    leftspan: Span,
-        propspan: Span,
-        enclose: bool,
+		leftspan: Span,
+		propspan: Span,
+		enclose: bool,
 	},
-	/// `window.location` -> cfg.wraplocation(window)
+	/// `window.attr` -> cfg.wrapattr(window)
 	WrapSet {
-    	ident: Atom<'data>,
-        propspan: Span,
-        leftspan: Span,
-        rightspan: Span,
+		ident: Atom<'data>,
+		propspan: Span,
+		leftspan: Span,
+		rightspan: Span,
 	},
-	/// `cfg.wrapcomputedsetfn(window, "location", t)`
+	/// `cfg.wrapcomputedsetfn(window, "attr", t)`
 	WrapSetComputed {
-        propspan: Span,
-        leftspan: Span,
-        rightspan: Span,
-    },
+		propspan: Span,
+		leftspan: Span,
+		rightspan: Span,
+	},
 	// dead code only if debug is disabled
 	#[allow(dead_code)]
 	/// `$scramerr(name)`
@@ -84,6 +84,7 @@ pub(crate) enum RewriteType<'alloc: 'data, 'data> {
 	Delete,
 }
 
+#[derive(Debug)]
 pub(crate) struct Rewrite<'alloc, 'data> {
 	span: Span,
 	ty: RewriteType<'alloc, 'data>,
@@ -114,6 +115,9 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 			($span1:ident $span2:ident end) => {
 				Span::new($span1.end, $span2.end)
 			};
+			($span1:ident $span2:ident between) => {
+				Span::new($span1.end, $span2.start)
+			};
 		}
 
 		match self {
@@ -122,51 +126,39 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 				change!(span!(end), WrapFnRight { enclose }),
 			],
 			Self::WrapGet {
-    			ident,
-                propspan,
-                enclose,
+				ident,
+				propspan,
+				enclose,
 			} => smallvec![
-	    		change!(span!(start), WrapGetLeft {
-					ident,
-					enclose,
-				}),
-				change!(propspan, Delete),
-				change!(Span::new(propspan.start-1, propspan.start), Delete),
-				change!(Span::new(propspan.end, propspan.end), WrapGetRight {
-                    enclose,
-                }),
+				change!(span!(start), WrapGetLeft { ident, enclose }),
+				change!(propspan.expand_left(1), WrapGetRight { enclose }),
 			],
-			Self::WrapGetComputed { leftspan, propspan, enclose } => smallvec![
-			    change!(span!(start), WrapGetComputedLeft {
-					enclose
-		        }),
+			Self::WrapGetComputed {
+				leftspan,
+				propspan,
+				enclose,
+			} => smallvec![
+				change!(span!(start), WrapGetComputedLeft { enclose }),
 				// replace the bracket with ,
-				change!(Span::new(leftspan.end, propspan.start), Replace { text: "," }),
+				change!(span!(leftspan propspan between), Replace { text: "," }),
 				// replace the other bracket with )
-				change!(Span::new(propspan.end, propspan.end + 1), ClosingParen { semi: false, replace: true }),
-
-			],
-			Self::WrapSet { ident, propspan, leftspan, rightspan } => smallvec![
-                change!(span!(start), WrapSet {
-                    ident,
-                    propspan,
-                }),
-                change!(propspan, Delete),
-                change!(Span::new(leftspan.end, rightspan.start), Replace { text: "," }),
-                change!(
-					span!(end),
+				change!(
+					propspan.expand_right(1),
 					ClosingParen {
 						semi: false,
 						replace: true
 					}
-				)
-            ],
-            RewriteType::WrapSetComputed { leftspan, rightspan, propspan } => smallvec![
-                change!(span!(start), WrapSetComputed),
-                // replace the bracket with ,
-				change!(Span::new(leftspan.end, propspan.start), Replace { text: "," }),
-				// replace the other bracket with another ,
-				change!(Span::new(propspan.end, rightspan.start), Replace { text: "," }),
+				),
+			],
+			Self::WrapSet {
+				ident,
+				propspan,
+				leftspan,
+				rightspan,
+			} => smallvec![
+				change!(span!(start), WrapSet { ident, propspan }),
+				change!(propspan, Delete),
+				change!(span!(leftspan rightspan between), Replace { text: "," }),
 				change!(
 					span!(end),
 					ClosingParen {
@@ -174,7 +166,25 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 						replace: true
 					}
 				)
-            ],
+			],
+			RewriteType::WrapSetComputed {
+				leftspan,
+				rightspan,
+				propspan,
+			} => smallvec![
+				change!(span!(start), WrapSetComputed),
+				// replace the bracket with ,
+				change!(span!(leftspan propspan between), Replace { text: "," }),
+				// replace the other bracket with another ,
+				change!(span!(propspan rightspan between), Replace { text: "," }),
+				change!(
+					span!(end),
+					ClosingParen {
+						semi: false,
+						replace: true
+					}
+				)
+			],
 			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::ImportFn => smallvec![change!(span, ImportFn)],
 			Self::MetaFn => smallvec![change!(span, MetaFn)],
