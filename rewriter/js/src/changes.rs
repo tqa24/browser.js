@@ -117,7 +117,6 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 		(cfg, flags): &Self::ToLowLevelData,
 		offset: i32,
 	) -> TransformLL<'data> {
-		dbg!(&self);
 		use JsChangeType as Ty;
 		use TransformLL as LL;
 		match self.ty {
@@ -232,7 +231,6 @@ impl<'alloc: 'data, 'data> JsChanges<'alloc, 'data> {
 
 	#[inline]
 	pub fn add(&mut self, rewrite: Rewrite<'alloc, 'data>) {
-		dbg!(&rewrite);
 		self.inner.add(rewrite.into_inner());
 	}
 

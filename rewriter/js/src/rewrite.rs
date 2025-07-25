@@ -143,7 +143,7 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 				change!(span!(leftspan propspan between), Replace { text: "," }),
 				// replace the other bracket with )
 				change!(
-					propspan.expand_right(1),
+					Span::new(propspan.end, propspan.end + 1),
 					ClosingParen {
 						semi: false,
 						replace: true
