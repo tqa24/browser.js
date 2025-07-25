@@ -49,10 +49,8 @@ fn get_config(scramjet: &Object) -> Result<Config> {
 	Ok(Config {
 		prefix: get_str(config, "prefix")?,
 
-        wrapgetbase: get_str(globals, "wrapgetbase")?,
-        wrapsetbase: get_str(globals, "wrapsetbase")?,
-        wrapcomputedgetfn: get_str(globals, "wrapcomputedgetfn")?,
-        wrapcomputedsetfn: get_str(globals, "wrapcomputedsetfn")?,
+        wrappropertybase: get_str(globals, "wrappropertybase")?,
+        wrappropertyfn: get_str(globals, "wrappropertyfn")?,
 		wrapfn: get_str(globals, "wrapfn")?,
 		importfn: get_str(globals, "importfn")?,
 		rewritefn: get_str(globals, "rewritefn")?,
