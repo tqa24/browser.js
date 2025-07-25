@@ -5,14 +5,22 @@ import {
 	addHistoryListeners,
 	History,
 	injectHistoryEmulation,
+	type SerializedHistory,
 } from "./history";
 import { NewTab } from "./pages/NewTab";
 import { Playground } from "./pages/Playground";
 import { createMenu } from "./components/Menu";
+import { About } from "./pages/About";
 
 const requestInspectElement = createDelegate<[HTMLElement, Tab]>();
 
-let id = 0;
+export type SerializedTab = {
+	id: number;
+	title: string | null;
+	history: SerializedHistory;
+};
+
+let id = 100;
 export class Tab extends StatefulClass {
 	id: number;
 	title: string | null;
@@ -46,6 +54,9 @@ export class Tab extends StatefulClass {
 		this.title = null;
 		this.internalpage = null;
 
+		const frame = scramjet.createFrame();
+		this.frame = frame;
+
 		this.history = new History(this);
 		this.history.push(this.url, undefined);
 
@@ -57,20 +68,35 @@ export class Tab extends StatefulClass {
 		this.width = 0;
 		this.pos = 0;
 
-		const frame = scramjet.createFrame();
 		addHistoryListeners(frame, this);
 		frame.addEventListener("contextInit", (ctx) => {
 			injectContextMenu(ctx.client, this);
 
 			// make sure it's top level, ctxInit calls for all frames too
 			if (ctx.window == frame.frame.contentWindow) {
+				injectTitleWatcher(ctx.client, this);
 				injectHistoryEmulation(ctx.client, this);
 				injectDevtools(ctx.client, this);
 			}
 		});
 
-		this.frame = frame;
 		this.devtoolsFrame = scramjet.createFrame();
+	}
+
+	serialize(): SerializedTab {
+		return {
+			id: this.id,
+			title: this.title,
+			history: this.history.serialize(),
+		};
+	}
+	deserialize(de: SerializedTab) {
+		// if (de.id >= id) id = de.id + 1;
+		// this.id = de.id;
+		this.title = de.title;
+		this.history.deserialize(de.history);
+		console.log(this.history.states[this.history.index].url);
+		this._directnavigate(this.history.states[this.history.index].url);
 	}
 
 	// only caller should be history.ts for this
@@ -86,9 +112,14 @@ export class Tab extends StatefulClass {
 					this.title = "Scramjet Playground";
 					this.internalpage = <Playground tab={this} />;
 					break;
+				case "version":
+					this.title = "About Version";
+					this.internalpage = <About tab={this} />;
 			}
 		} else {
 			this.internalpage = null;
+			// placeholder title until the page fills in
+			this.title = url.href;
 			this.frame.go(url);
 		}
 	}
@@ -376,6 +407,37 @@ function injectContextMenu(client: ScramjetClient, tab: Tab) {
 	});
 }
 
+function injectTitleWatcher(client: ScramjetClient, tab: Tab) {
+	const framedoc = client.global.document;
+	const head = framedoc.querySelector("head")!;
+	const observer = new MutationObserver(() => {
+		const title = framedoc.querySelector("title");
+		if (title) {
+			tab.title = title.textContent || "New Tab";
+		} else {
+			tab.title = "New Tab";
+		}
+		const favicon = framedoc.querySelector(
+			"link[rel='icon'], link[rel='shortcut icon']"
+		);
+		if (favicon) {
+			const iconhref = favicon.getAttribute("href");
+			if (iconhref) {
+				const rewritten = scramjet.encodeUrl(new URL(iconhref, client.url));
+				tab.icon = rewritten;
+			} else {
+				tab.icon = "/vite.svg";
+			}
+		} else {
+			tab.icon = scramjet.encodeUrl(new URL("/favicon.ico", client.url));
+		}
+	});
+	observer.observe(head, {
+		childList: true,
+		subtree: true,
+	});
+}
+
 // 		frame.frame.addEventListener("load", (e) => {
 // 			tab.url = frame.client.url.href;
 // 		});
@@ -399,39 +461,6 @@ function injectContextMenu(client: ScramjetClient, tab: Tab) {
 // 				},
 // 			});
 
-// 			const framedoc = ctx.window.document;
-
-// 			const head = framedoc.querySelector("head")!;
-// 			const observer = new MutationObserver(() => {
-// 				const title = framedoc.querySelector("title");
-// 				if (title) {
-// 					tab.title = title.textContent || "New Tab";
-// 				} else {
-// 					tab.title = "New Tab";
-// 				}
-// 				const favicon = framedoc.querySelector(
-// 					"link[rel='icon'], link[rel='shortcut icon']"
-// 				);
-// 				if (favicon) {
-// 					const iconhref = favicon.getAttribute("href");
-// 					if (iconhref) {
-// 						const rewritten = scramjet.encodeUrl(
-// 							new URL(iconhref, frame.client.url)
-// 						);
-// 						tab.icon = rewritten;
-// 					} else {
-// 						tab.icon = "/vite.svg";
-// 					}
-// 				} else {
-// 					tab.icon = scramjet.encodeUrl(
-// 						new URL("/favicon.ico", frame.client.url)
-// 					);
-// 				}
-// 			});
-// 			observer.observe(head, {
-// 				childList: true,
-// 				subtree: true,
-// 			});
 // 			const anchorObserver = new MutationObserver((mutations) => {
 // 				mutations.forEach((mutation) => {
 // 					mutation.addedNodes.forEach((node) => {
