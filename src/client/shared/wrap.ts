@@ -14,7 +14,7 @@ export function createWrapFn(client: ScramjetClient, self: typeof globalThis) {
 			if (identifier === self.parent) {
 				if (SCRAMJETCLIENT in self.parent) {
 					// ... then we're in a subframe, and the parent frame is also in a proxy context, so we should return its proxy
-					return self.parent[SCRAMJETCLIENT].globalProxy;
+					return self.parent;
 				} else {
 					// ... then we should pretend we aren't nested and return the current window
 					return self;
