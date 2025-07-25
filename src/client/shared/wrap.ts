@@ -55,11 +55,15 @@ export default function (client: ScramjetClient, self: typeof globalThis) {
 		writable: false,
 		configurable: false,
 	});
-	Object.defineProperty(self, config.globals.wrapthisfn, {
-		value: function (i) {
-			if (i === self) return client.globalProxy;
+	Object.defineProperty(self, config.globals.wrapcomputedgetfn, {
+		value: function (val, prop) {
+			if (val === self) {
+				console.log(prop);
 
-			return i;
+				return null;
+			}
+
+			return Reflect.get(val, prop);
 		},
 		writable: false,
 		configurable: false,
