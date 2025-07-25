@@ -130,23 +130,15 @@ where
 
 				if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
 					self.jschanges.add(rewrite!(
-						it.span(),
-						WrapGet {
-							ident: s.property.name,
-							propspan: s.property.span,
-							enclose: false,
-						}
+						s.property.span(),
+						RewriteProperty { ident: s.property.name }
 					));
 				}
 			}
 			MemberExpression::ComputedMemberExpression(s) => {
 				self.jschanges.add(rewrite!(
-					it.span(),
-					WrapGetComputed {
-						leftspan: s.object.span(),
-						propspan: s.expression.span(),
-						enclose: false,
-					}
+					s.expression.span(),
+					WrapProperty,
 				));
 			}
 			_ => {} // if !self.flags.strict_rewrites
@@ -314,13 +306,8 @@ where
 			AssignmentTarget::StaticMemberExpression(s) => {
 				if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
 					self.jschanges.add(rewrite!(
-						it.span,
-						WrapSet {
-							ident: s.property.name,
-							propspan: Span::new(s.property.span.start - 1, s.property.span.end),
-							leftspan: s.span(),
-							rightspan: it.right.span(),
-						}
+						s.property.span(),
+						RewriteProperty { ident: s.property.name }
 					));
 				}
 
@@ -329,12 +316,8 @@ where
 			}
 			AssignmentTarget::ComputedMemberExpression(s) => {
 				self.jschanges.add(rewrite!(
-					it.span,
-					WrapSetComputed {
-						propspan: s.expression.span(),
-						leftspan: s.object.span(),
-						rightspan: it.right.span(),
-					}
+					s.expression.span(),
+					WrapProperty,
 				));
 				walk::walk_expression(self, &s.object);
 				walk::walk_expression(self, &s.expression);

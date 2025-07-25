@@ -35,22 +35,10 @@ pub enum JsChangeType<'alloc: 'data, 'data> {
 		enclose: bool,
 	},
 
-	WrapGetLeft {
-		ident: Atom<'data>,
-		enclose: bool,
-	},
-	WrapGetComputedLeft {
-		enclose: bool,
-	},
-	WrapGetRight {
-		enclose: bool,
-	},
-
-	WrapSet {
-		ident: Atom<'data>,
-		propspan: Span,
-	},
-	WrapSetComputed,
+	WrapPropertyLeft,
+	RewriteProperty {
+        ident: Atom<'data>,
+    },
 
 	/// insert `${cfg.setrealmfn}({}).`
 	SetRealmFn,
@@ -117,6 +105,7 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 		(cfg, flags): &Self::ToLowLevelData,
 		offset: i32,
 	) -> TransformLL<'data> {
+    	dbg!(&&self);
 		use JsChangeType as Ty;
 		use TransformLL as LL;
 		match self.ty {
@@ -130,25 +119,9 @@ impl<'alloc: 'data, 'data> Transform<'data> for JsChange<'alloc, 'data> {
 			} else {
 				transforms![")"]
 			}),
-			Ty::WrapGetLeft { ident, enclose } => LL::insert(if enclose {
-				transforms!["(", &cfg.wrapgetbase, ident, "("]
-			} else {
-				transforms![&cfg.wrapgetbase, ident, "("]
-			}),
-			Ty::WrapGetComputedLeft { enclose } => LL::insert(if enclose {
-				transforms!["(", &cfg.wrapcomputedgetfn, "("]
-			} else {
-				transforms![&cfg.wrapcomputedgetfn, "("]
-			}),
-			Ty::WrapGetRight { enclose } => LL::replace(if enclose {
-				transforms!["))"]
-			} else {
-				transforms![")"]
-			}),
-			Ty::WrapSet { ident, propspan } => {
-				LL::insert(transforms![&cfg.wrapsetbase, ident, "("])
-			}
-			Ty::WrapSetComputed => LL::insert(transforms![&cfg.wrapcomputedsetfn, "("]),
+			Ty::WrapPropertyLeft => LL::insert(transforms![&cfg.wrappropertyfn, "("]),
+			Ty::RewriteProperty { ident } => LL::replace(transforms![&cfg.wrappropertybase,ident]),
+
 			Ty::SetRealmFn => LL::insert(transforms![&cfg.setrealmfn, "({})."]),
 			Ty::ScramErrFn { ident } => LL::insert(transforms!["$scramerr(", ident, ");"]),
 			Ty::ScramitizeFn => LL::insert(transforms![" $scramitize("]),

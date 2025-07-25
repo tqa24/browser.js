@@ -25,14 +25,10 @@ pub struct RewriterOptions {
 	prefix: String,
 	#[clap(long, default_value = "$wrap")]
 	wrapfn: String,
-	#[clap(long, default_value = "$get_")]
-	wrapgetbase: String,
-	#[clap(long, default_value = "$set_")]
-	wrapsetbase: String,
-	#[clap(long, default_value = "$computedget")]
-	wrapcomputedgetfn: String,
-	#[clap(long, default_value = "$computedset")]
-	wrapcomputedsetfn: String,
+	#[clap(long, default_value = "$sj_")]
+	wrappropertybase: String,
+	#[clap(long, default_value = "$prop")]
+	wrappropertyfn: String,
 	#[clap(long, default_value = "$import")]
 	importfn: String,
 	#[clap(long, default_value = "$rewrite")]
