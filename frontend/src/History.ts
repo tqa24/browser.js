@@ -1,17 +1,47 @@
+import { browser } from "./main";
 import type { Tab } from "./Tab";
 
 // history api emulation
-export type HistoryState = {
-	state: any;
+export class HistoryState {
 	url: URL;
+	state: any;
+	title: string | null;
+	favicon: string | null;
+	timestamp: number;
+
+	constructor(partial?: Partial<HistoryState>) {
+		Object.assign(this, partial);
+		this.timestamp = Date.now();
+	}
+
+	serialize(): SerializedHistoryState {
+		return {
+			state: this.state,
+			url: this.url.href,
+			title: this.title,
+			favicon: this.favicon,
+			timestamp: this.timestamp,
+		};
+	}
+	deserialize(de: SerializedHistoryState) {
+		this.state = de.state;
+		this.url = new URL(de.url);
+		this.title = de.title;
+		this.favicon = de.favicon;
+		this.timestamp = de.timestamp;
+	}
+}
+export type SerializedHistoryState = {
+	state: any;
+	url: string;
+	title: string | null;
+	favicon: string | null;
+	timestamp: number;
 };
 
 export type SerializedHistory = {
 	index: number;
-	states: {
-		state: any;
-		url: string;
-	}[];
+	states: SerializedHistoryState[];
 };
 
 export class History {
@@ -23,19 +53,30 @@ export class History {
 	serialize(): SerializedHistory {
 		return {
 			index: this.index,
-			states: this.states.map((s) => ({ state: s.state, url: s.url.href })),
+			states: this.states.map((s) => s.serialize()),
 		};
 	}
 	deserialize(de: SerializedHistory) {
 		this.index = de.index;
-		this.states = de.states.map((s) => ({
-			state: s.state,
-			url: new URL(s.url),
-		}));
+		this.states = de.states.map((s) => {
+			const state = new HistoryState();
+			state.deserialize(s);
+
+			return state;
+		});
+	}
+	current(): HistoryState {
+		if (this.index < 0 || this.index >= this.states.length) {
+			throw new Error("No current history state");
+		}
+
+		return this.states[this.index];
 	}
 
 	push(url: URL, state: any = null, navigate: boolean = true): HistoryState {
-		this.states.push({ url, state });
+		const hstate = new HistoryState({ url, state });
+		if (url.href != "puter://newtab") browser.globalhistory.push(hstate);
+		this.states.push(hstate);
 		this.index++;
 
 		if (navigate) this.tab._directnavigate(url);
@@ -47,9 +88,12 @@ export class History {
 	}
 	replace(url: URL, state: any, navigate: boolean = true): HistoryState {
 		if (this.index < this.states.length) {
-			this.states[this.index] = { url, state };
+			this.current().url = url;
+			this.current().state = state;
+			this.current().title = null;
+			this.current().favicon = null;
 		} else {
-			this.push(url, state);
+			return this.push(url, state);
 		}
 
 		if (navigate) this.tab._directnavigate(url);
@@ -112,6 +156,27 @@ export function injectHistoryEmulation(client: ScramjetClient, tab: Tab) {
 	client.Proxy("History.prototype.replaceState", {
 		apply(ctx) {
 			console.log("STATE REPLACE", ctx.args);
+			ctx.return(undefined);
+		},
+	});
+	client.Proxy("History.prototype.back", {
+		apply(ctx) {
+			console.log("HISTORY BACK", ctx);
+			tab.history.go(-1);
+			ctx.return(undefined);
+		},
+	});
+	client.Proxy("History.prototype.forward", {
+		apply(ctx) {
+			console.log("HISTORY FORWARD", ctx);
+			tab.history.go(1);
+			ctx.return(undefined);
+		},
+	});
+	client.Proxy("History.prototype.go", {
+		apply(ctx) {
+			console.log("HISTORY GO", ctx);
+			tab.history.go(ctx.args[0]);
 			ctx.return(undefined);
 		},
 	});

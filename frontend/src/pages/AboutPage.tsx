@@ -1,7 +1,8 @@
 import { css, type Component } from "dreamland/core";
 import type { Tab } from "../Tab";
+import { scramjet } from "../main";
 
-export const NewTab: Component<
+export const AboutPage: Component<
 	{
 		tab: Tab;
 	},
@@ -11,20 +12,12 @@ export const NewTab: Component<
 		<div>
 			<div class="main">
 				<h1>Puter Browser</h1>
-				<input
-					on:keydown={(e: KeyboardEvent) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							this.tab.history.push(new URL(e.target!.value));
-						}
-					}}
-					placeholder="Search Google or type A URL"
-				></input>
+				Scramjet Version: {$scramjetVersion.build} {$scramjetVersion.version}
 			</div>
 		</div>
 	);
 };
-NewTab.style = css`
+AboutPage.style = css`
 	:scope {
 		width: 100%;
 		height: 100%;

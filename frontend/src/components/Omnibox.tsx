@@ -8,9 +8,16 @@ import iconShield from "@ktibow/iconset-ion/shield-outline";
 import iconStar from "@ktibow/iconset-ion/star-outline";
 import iconSearch from "@ktibow/iconset-ion/search";
 import { createMenu, setContextMenu } from "./Menu";
-import { browser, client } from "../main";
+import { browser, scramjet } from "../main";
 import { IconButton } from "./IconButton";
 import { createDelegate, type Delegate } from "dreamland/core";
+import type { Tab } from "../Tab";
+
+export function trimUrl(v: URL) {
+	return (
+		(v.protocol === "puter:" ? v.protocol : "") + v.host + v.pathname + v.search
+	);
+}
 
 export const Spacer: Component = function (cx) {
 	return <div></div>;
@@ -21,10 +28,16 @@ Spacer.style = css`
 	}
 `;
 
+type OmniboxResult = {
+	kind: "search" | "history" | "bookmark" | "direct";
+	title?: string | null;
+	url: URL;
+	favicon?: string | null;
+};
+
 export const UrlInput: Component<
 	{
 		tabUrl: URL;
-		navigate: (url: string) => void;
 		selectContent: Delegate<void>;
 	},
 	{
@@ -34,19 +47,65 @@ export const UrlInput: Component<
 
 		focusindex: number;
 
-		overflowItems: string[];
+		overflowItems: OmniboxResult[];
 	}
 > = function (cx) {
 	this.focusindex = 0;
 	this.overflowItems = [];
 	this.value = "";
 	const fetchSuggestions = async () => {
-		let resp = await client.fetch(
-			`http://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(this.input.value)}`
+		let search = this.input.value;
+
+		this.overflowItems = [];
+
+		for (const entry of browser.globalhistory) {
+			if (!entry.url.href.includes(search) && !entry.title?.includes(search))
+				continue;
+			if (this.overflowItems.some((i) => i.url.href === entry.url.href))
+				continue;
+
+			this.overflowItems.push({
+				kind: "history",
+				title: entry.title,
+				url: entry.url,
+				favicon: entry.favicon,
+			});
+		}
+		this.overflowItems = this.overflowItems.slice(0, 5);
+
+		if (URL.canParse(search)) {
+			this.overflowItems = [
+				{
+					kind: "direct",
+					url: new URL(search),
+				},
+				...this.overflowItems,
+			];
+			return;
+		}
+
+		let resp = await fetch(
+			scramjet.encodeUrl(
+				`http://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(search)}`
+			)
 		);
 		let json = await resp.json();
-		console.log(json);
-		this.overflowItems = json[1].slice(0, 5);
+		for (const item of json[1].slice(0, 5)) {
+			// it's gonna be stuff like "http //fortnite.com/2fa ps5"
+			// these results are generally useless
+			if (item.startsWith("http")) continue;
+
+			this.overflowItems.push({
+				kind: "search",
+				title: item,
+				url: new URL(
+					`https://www.google.com/search?q=${encodeURIComponent(item)}`
+				),
+				favicon: scramjet.encodeUrl("https://www.google.com/favicon.ico"),
+			});
+		}
+
+		this.overflowItems = this.overflowItems;
 	};
 	let currentTimeout: number | null = null;
 	let ratelimiting = false;
@@ -58,7 +117,6 @@ export const UrlInput: Component<
 		}
 		if (ratelimiting) {
 			if (currentTimeout) return;
-			// TODO: why is it using the node types here
 			currentTimeout = setTimeout(() => {
 				ratelimiting = false;
 				fetchSuggestions();
@@ -108,18 +166,23 @@ export const UrlInput: Component<
 					<div
 						class="overflowitem"
 						on:click={() => {
-							this.value = item;
 							this.active = false;
 							this.input.blur();
 
-							this.navigate(this.value);
+							browser.activetab.pushNavigate(item.url);
 						}}
 						class:focused={use(this.focusindex).map(
 							(i) => i - 1 === this.overflowItems.indexOf(item)
 						)}
 					>
-						<IconButton icon={iconSearch}></IconButton>
-						<span>{item}</span>
+						<img
+							class="favicon"
+							src={item.favicon || "/vite.svg"}
+							alt="favicon"
+						/>
+						{(item.title && <span class="description">{item.title} - </span>) ||
+							""}
+						<span class="url">{trimUrl(item.url)}</span>
 					</div>
 				))}
 			</div>
@@ -147,12 +210,13 @@ export const UrlInput: Component<
 							if (e.key === "Enter") {
 								e.preventDefault();
 								if (this.focusindex > 0) {
-									this.value = this.overflowItems[this.focusindex - 1];
-									this.navigate(this.value);
+									browser.activetab.pushNavigate(
+										this.overflowItems[this.focusindex - 1].url
+									);
 									this.active = false;
 									this.input.blur();
 								} else {
-									this.navigate(this.value);
+									browser.searchNavigate(this.value);
 								}
 							}
 						}}
@@ -165,15 +229,7 @@ export const UrlInput: Component<
 				{use(this.active)
 					.map((a) => !a)
 					.andThen(
-						<span class="inactiveurl">
-							{use(this.tabUrl).map(
-								(v) =>
-									(v.protocol === "puter:" ? v.protocol : "") +
-									v.host +
-									v.pathname +
-									v.search
-							)}
-						</span>
+						<span class="inactiveurl">{use(this.tabUrl).map(trimUrl)}</span>
 					)}
 
 				<IconButton icon={iconStar}></IconButton>
@@ -188,6 +244,12 @@ UrlInput.style = css`
 		display: flex;
 		height: 100%;
 	}
+
+	.favicon {
+		width: 16px;
+		height: 16px;
+	}
+
 	.overflow {
 		position: absolute;
 		display: none;
@@ -205,6 +267,20 @@ UrlInput.style = css`
 		align-items: center;
 		height: 2.5em;
 		cursor: pointer;
+		gap: 0.5em;
+		padding-left: 0.5em;
+		white-space: nowrap;
+	}
+	.overflowitem .url,
+	.overflowitem .description {
+		text-overflow: ellipsis;
+		text-wrap: nowrap;
+		word-wrap: nowrap;
+		overflow: hidden;
+	}
+
+	.overflowitem .url {
+		color: grey;
 	}
 	.overflowitem.focused {
 		background: blue;
@@ -248,13 +324,7 @@ UrlInput.style = css`
 `;
 
 export const Omnibox: Component<{
-	tabUrl: URL;
-	navigate: (url: string) => void;
-	goBack: () => void;
-	goForwards: () => void;
-	refresh: () => void;
-	canGoBack: boolean;
-	canGoForwards: boolean;
+	tab: Tab;
 }> = function (cx) {
 	const selectContent = createDelegate<void>();
 	cx.mount = () => {
@@ -270,21 +340,23 @@ export const Omnibox: Component<{
 	return (
 		<div>
 			<IconButton
-				active={use(this.canGoBack)}
-				click={this.goBack}
+				active={use(this.tab.canGoBack)}
+				click={() => this.tab.back()}
 				icon={iconBack}
 			></IconButton>
 			<IconButton
-				active={use(this.canGoForwards)}
-				click={this.goForwards}
+				active={use(this.tab.canGoForward)}
+				click={() => this.tab.forward()}
 				icon={iconForwards}
 			></IconButton>
-			<IconButton click={this.refresh} icon={iconRefresh}></IconButton>
+			<IconButton
+				click={() => this.tab.reload()}
+				icon={iconRefresh}
+			></IconButton>
 			<Spacer></Spacer>
 			<UrlInput
 				selectContent={selectContent}
-				tabUrl={use(this.tabUrl)}
-				navigate={this.navigate}
+				tabUrl={use(this.tab.url)}
 			></UrlInput>
 			<Spacer></Spacer>
 			<IconButton icon={iconExtension}></IconButton>
@@ -301,8 +373,7 @@ export const Omnibox: Component<{
 						{
 							label: "History",
 							action: () => {
-								let t = browser.newTab();
-								t.replaceNavigate(new URL("puter://history"));
+								let t = browser.newTab(new URL("puter://history"));
 							},
 						},
 						{
@@ -328,6 +399,7 @@ export const Omnibox: Component<{
 };
 Omnibox.style = css`
 	:scope {
+		z-index: 1;
 		background: var(--aboutbrowser-omnibox-bg);
 		display: flex;
 		padding: 0px 7px 0px 7px;

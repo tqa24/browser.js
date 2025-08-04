@@ -6,11 +6,12 @@ import {
 	History,
 	injectHistoryEmulation,
 	type SerializedHistory,
-} from "./history";
-import { NewTab } from "./pages/NewTab";
-import { Playground } from "./pages/Playground";
+} from "./History";
+import { NewTabPage } from "./pages/NewTabPage";
+import { PlaygroundPage } from "./pages/PlaygroundPage";
 import { createMenu } from "./components/Menu";
-import { About } from "./pages/About";
+import { AboutPage } from "./pages/AboutPage";
+import { HistoryPage } from "./pages/HistoryPage";
 
 const requestInspectElement = createDelegate<[HTMLElement, Tab]>();
 
@@ -76,7 +77,7 @@ export class Tab extends StatefulClass {
 			if (ctx.window == frame.frame.contentWindow) {
 				injectTitleWatcher(ctx.client, this);
 				injectHistoryEmulation(ctx.client, this);
-				injectDevtools(ctx.client, this);
+				// injectDevtools(ctx.client, this);
 			}
 		});
 
@@ -106,15 +107,19 @@ export class Tab extends StatefulClass {
 			switch (url.host) {
 				case "newtab":
 					this.title = "New Tab";
-					this.internalpage = <NewTab tab={this} />;
+					this.internalpage = <NewTabPage tab={this} />;
 					break;
 				case "playground":
 					this.title = "Scramjet Playground";
-					this.internalpage = <Playground tab={this} />;
+					this.internalpage = <PlaygroundPage tab={this} />;
+					break;
+				case "history":
+					this.title = "Browser History";
+					this.internalpage = <HistoryPage tab={this}></HistoryPage>;
 					break;
 				case "version":
 					this.title = "About Version";
-					this.internalpage = <About tab={this} />;
+					this.internalpage = <AboutPage tab={this} />;
 			}
 		} else {
 			this.internalpage = null;
@@ -431,6 +436,8 @@ function injectTitleWatcher(client: ScramjetClient, tab: Tab) {
 		} else {
 			tab.icon = scramjet.encodeUrl(new URL("/favicon.ico", client.url));
 		}
+		tab.history.current().title = tab.title;
+		tab.history.current().favicon = tab.icon;
 	});
 	observer.observe(head, {
 		childList: true,
