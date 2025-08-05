@@ -73,14 +73,14 @@ export default function (client: ScramjetClient, self: typeof globalThis) {
 		config.globals.wrappropertybase + "location",
 		{
 			get: function () {
-				if (this === self) {
+				if (this === self || this === self.document) {
 					return client.locationProxy;
 				}
 
 				return this.location;
 			},
 			set(value: any) {
-				if (this === self) {
+				if (this === self || this === self.document) {
 					client.locationProxy = value;
 
 					return;
