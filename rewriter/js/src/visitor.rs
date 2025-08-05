@@ -3,13 +3,9 @@ use std::error::Error;
 use oxc::{
 	allocator::{Allocator, StringBuilder},
 	ast::ast::{
-		AssignmentExpression, AssignmentTarget, CallExpression, DebuggerStatement,
-		ExportAllDeclaration, ExportNamedDeclaration, Expression, FunctionBody,
-		IdentifierReference, ImportDeclaration, ImportExpression, MemberExpression, MetaProperty,
-		NewExpression, ObjectExpression, ObjectPropertyKind, ReturnStatement, StringLiteral,
-		ThisExpression, UnaryExpression, UnaryOperator, UpdateExpression,
+		AssignmentExpression, AssignmentTarget, CallExpression, ComputedMemberExpression, DebuggerStatement, ExportAllDeclaration, ExportNamedDeclaration, Expression, FunctionBody, IdentifierReference, ImportDeclaration, ImportExpression, MemberExpression, MetaProperty, NewExpression, ObjectExpression, ObjectPropertyKind, ReturnStatement, StringLiteral, ThisExpression, UnaryExpression, UnaryOperator, UpdateExpression
 	},
-	ast_visit::{Visit, walk},
+	ast_visit::{walk, Visit},
 	span::{Atom, GetSpan, Span},
 };
 
@@ -64,23 +60,42 @@ where
 		}
 	}
 
-	fn walk_member_expression(&mut self, it: &Expression) -> bool {
-		match it {
-			Expression::Identifier(s) => false,
-			Expression::StaticMemberExpression(s) => {
-				if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
-					// self.jschanges.add(rewrite!(s.span, WrapAccess {
-					//          ident: s.property.name,
-					//          propspan: s.property.span,
-					//      }
-					// ));
-				}
-				self.walk_member_expression(&s.object)
-			}
-			Expression::ComputedMemberExpression(s) => self.walk_member_expression(&s.object),
-			_ => false,
-		}
-	}
+	// fn walk_member_expression(&mut self, it: &Expression) -> bool {
+	// 	match it {
+	// 		Expression::Identifier(s) => false,
+	// 		Expression::StaticMemberExpression(s) => {
+	// 			if UNSAFE_GLOBALS.contains(&s.property.name.as_str()) {
+	// 				// self.jschanges.add(rewrite!(s.span, WrapAccess {
+	// 				//          ident: s.property.name,
+	// 				//          propspan: s.property.span,
+	// 				//      }
+	// 				// ));
+	// 			}
+	// 			self.walk_member_expression(&s.object)
+	// 		}
+	// 		Expression::ComputedMemberExpression(s) => self.walk_member_expression(&s.object),
+	// 		_ => false,
+	// 	}
+	// }
+	fn walk_computed_member_expression(&mut self, it: &ComputedMemberExpression<'data>) {
+    	match &it.expression{
+            Expression::NullLiteral(_) | Expression::BigIntLiteral(_) | Expression::NumericLiteral(_) | Expression::RegExpLiteral(_) | Expression::BooleanLiteral(_) => {},
+            Expression::StringLiteral(lit) =>{
+                if UNSAFE_GLOBALS.contains(&lit.value.as_str()) {
+    				self.jschanges.add(rewrite!(
+       					it.expression.span(),
+       					WrapProperty,
+    				));
+                }
+            },
+            _=> {
+                self.jschanges.add(rewrite!(
+   					it.expression.span(),
+   					WrapProperty,
+				));
+            }
+        }
+    }
 
 	fn scramitize(&mut self, span: Span) {
 		self.jschanges.add(rewrite!(span, Scramitize));
@@ -110,7 +125,8 @@ where
 	}
 
 	fn visit_new_expression(&mut self, it: &NewExpression<'data>) {
-		self.walk_member_expression(&it.callee);
+	// ??
+		// self.walk_member_expression(&it.callee);
 		walk::walk_arguments(self, &it.arguments);
 	}
 
@@ -136,10 +152,7 @@ where
 				}
 			}
 			MemberExpression::ComputedMemberExpression(s) => {
-				self.jschanges.add(rewrite!(
-					s.expression.span(),
-					WrapProperty,
-				));
+				self.walk_computed_member_expression(s);
 			}
 			_ => {} // if !self.flags.strict_rewrites
 			        // 	&& !UNSAFE_GLOBALS.contains(&s.property.name.as_str())
@@ -318,10 +331,7 @@ where
 				walk::walk_expression(self, &s.object);
 			}
 			AssignmentTarget::ComputedMemberExpression(s) => {
-				self.jschanges.add(rewrite!(
-					s.expression.span(),
-					WrapProperty,
-				));
+     			self.walk_computed_member_expression(s);
 				walk::walk_expression(self, &s.object);
 				walk::walk_expression(self, &s.expression);
 			}

@@ -129,9 +129,9 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
 				)
 			],
 			Self::Eval { inner } => smallvec![
-				change!(span!(span inner start), EvalRewriteFn),
+				change!(Span::new(inner.start, inner.start), EvalRewriteFn),
 				change!(
-					span!(inner span end),
+					Span::new(inner.end, inner.end),
 					ClosingParen {
 						semi: false,
 						replace: false,
