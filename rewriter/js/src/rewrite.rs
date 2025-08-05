@@ -112,7 +112,7 @@ impl<'alloc: 'data, 'data> RewriteType<'alloc, 'data> {
             ],
             Self::WrapProperty => smallvec![
                 change!(span!(start), WrapPropertyLeft),
-                change!(span!(end), ClosingParen { semi: false, replace: false }),
+                change!(span!(end), WrapPropertyRight),
             ],
 			Self::SetRealmFn => smallvec![change!(span, SetRealmFn)],
 			Self::ImportFn => smallvec![change!(span, ImportFn)],
