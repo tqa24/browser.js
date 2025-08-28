@@ -24,10 +24,11 @@
 
 It can be used as:
 
-- A fast, lightweight alternative to Puppeteer, Playwright, and Selenium without any installation!
 - A cloud-based browser accessible from any device
+- A headless browser that can be embedded in other websites and applications
+- A fast, lightweight, and no-installation alternative to Puppeteer, Playwright, and Selenium
 - An alternative to Ultraviolet, Rammerhead, and other web proxy browsers
-- A headless browser that can be embedded in other web applications
+
 
 <br>
 
