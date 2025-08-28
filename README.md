@@ -18,6 +18,19 @@
 
 <br>
 
+# Browser.js
+
+"A browser in a browser!", Browser.js is a highly configurable browser environment for the web.
+
+It can be used as:
+
+- A fast, lightweight alternative to Puppeteer, Playwright, and Selenium without any installation!
+- A cloud-based browser accessible from any device
+- An alternative to Ultraviolet, Rammerhead, and other web proxy browsers
+- A headless browser that can be embedded in other web applications
+
+<br>
+
 
 ## Getting Started
 
