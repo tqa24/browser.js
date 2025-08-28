@@ -32,6 +32,16 @@ It can be used as:
 
 <br>
 
+## Getting Started
+
+See [CONTRIBUTING.md](/CONTRIBUTING.md) for build instructions
+
+> [!WARNING]
+> Browser.js does not currently have site isolation! Do not use it for sensitive data!
+
+<br>
+
+
 ## Support
 
 Connect with the maintainers and community through these channels:
@@ -47,16 +57,6 @@ Connect with the maintainers and community through these channels:
 We are always happy to help you with any questions you may have. Don't hesitate to ask!
 
 <br/>
-
-## Getting Started
-
-See [CONTRIBUTING.md](/CONTRIBUTING.md) for build instructions
-
-> [!WARNING]
-> Browser.js does not currently have site isolation! Do not use it for sensitive data!
-
-<br>
-
 
 ## License
 
