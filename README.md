@@ -24,7 +24,7 @@
 
 It can be used as:
 
-- A cloud-based browser accessible from any device
+- An end-to-end encrypted, cloud-based browser accessible from any device at anytime
 - A headless browser that can be embedded in other websites and applications
 - A fast, lightweight, and no-installation alternative to Puppeteer, Playwright, and Selenium
 - An alternative to Ultraviolet, Rammerhead, and other web proxy browsers
