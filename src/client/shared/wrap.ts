@@ -5,6 +5,8 @@ import { config } from "@/shared";
 // import { argdbg } from "@client/shared/err";
 import { indirectEval } from "@client/shared/eval";
 
+export const UNSAFE_GLOBALS = ["location", "parent", "top", "eval"];
+
 export function createWrapFn(client: ScramjetClient, self: typeof globalThis) {
 	return function (identifier: any, strict: boolean) {
 		if (identifier === self.location) return client.locationProxy;
