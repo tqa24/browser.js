@@ -9,6 +9,7 @@ export const Object_values = Object.values;
 export const Object_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 
 export const Reflect_get = Reflect.get;
+export const Reflect_set = Reflect.set;
 export const Reflect_ownKeys = Reflect.ownKeys;
 export const Reflect_has = Reflect.has;
 export const Reflect_apply = Reflect.apply;
@@ -33,4 +34,9 @@ export function Array_filter<T>(array: Array<T>, func: (arg: T) => boolean) {
 const string_startsWith_func = String.prototype.startsWith;
 export function String_startsWith(str: string, search: string) {
 	return Reflect_apply(string_startsWith_func, str, [search]);
+}
+
+const array_includes_func = Array.prototype.includes;
+export function Array_includes<T>(array: Array<T>, item: T) {
+	return Reflect_apply(array_includes_func, array, [item]);
 }

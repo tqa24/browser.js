@@ -1,7 +1,17 @@
 import { rewriteCss, unrewriteCss } from "@rewriters/css";
-import { ScramjetClient } from "@client/index";
+import {
+	Array_includes,
+	Reflect_apply,
+	Reflect_get,
+	Reflect_set,
+	ScramjetClient,
+} from "@client/index";
 
 export default function (client: ScramjetClient) {
+	const CSSStyleDeclaration_keys = Object.getOwnPropertyNames(
+		CSSStyleDeclaration.prototype
+	);
+
 	client.Proxy("CSSStyleDeclaration.prototype.setProperty", {
 		apply(ctx) {
 			if (!ctx.args[1]) return;
@@ -67,31 +77,31 @@ export default function (client: ScramjetClient) {
 
 			const style = ctx.get() as CSSStyleDeclaration;
 
-			return new Proxy(style, {
+			return client.natives.construct("Proxy", style, {
 				get(target, prop) {
-					const value = Reflect.get(target, prop);
+					const value = Reflect_get(target, prop);
 
 					if (typeof value === "function") {
-						return new Proxy(value, {
+						return client.natives.construct("Proxy", value, {
 							apply(target, that, args) {
-								return Reflect.apply(target, style, args);
+								return Reflect_apply(target, style, args);
 							},
-						});
+						} as ProxyHandler<any>);
 					}
 
-					if (prop in CSSStyleDeclaration.prototype) return value;
+					if (Array_includes(CSSStyleDeclaration_keys, prop)) return value;
 					if (!value) return value;
 
 					return unrewriteCss(value);
 				},
 				set(target, prop, value) {
 					if (prop == "cssText" || value == "" || typeof value !== "string") {
-						return Reflect.set(target, prop, value);
+						return Reflect_set(target, prop, value);
 					}
 
-					return Reflect.set(target, prop, rewriteCss(value, client.meta));
+					return Reflect_set(target, prop, rewriteCss(value, client.meta));
 				},
-			});
+			} as ProxyHandler<CSSStyleDeclaration>);
 		},
 		set(ctx, value: string) {
 			// this will actually run the trap for cssText. don't rewrite it here
