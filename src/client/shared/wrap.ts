@@ -1,11 +1,18 @@
 import { iswindow } from "@client/entry";
-import { SCRAMJETCLIENT } from "@/symbols";
+import { SCRAMJETCLIENT, SCRAMJETFRAME } from "@/symbols";
 import { ScramjetClient } from "@client/index";
 import { config } from "@/shared";
 // import { argdbg } from "@client/shared/err";
 import { indirectEval } from "@client/shared/eval";
 
-export const UNSAFE_GLOBALS = ["location", "parent", "top", "eval"];
+export const UNSAFE_GLOBALS = [
+	"location",
+	"parent",
+	"top",
+	"eval",
+	SCRAMJETCLIENT,
+	SCRAMJETFRAME,
+];
 
 export function createWrapFn(client: ScramjetClient, self: typeof globalThis) {
 	return function (identifier: any, strict: boolean) {
@@ -53,16 +60,20 @@ export default function (client: ScramjetClient, self: typeof globalThis) {
 		enumerable: false,
 	});
 	Object.defineProperty(self, config.globals.wrappropertyfn, {
-		value: function (str) {
+		value: function (prop: string | symbol) {
 			if (
-				str === "location" ||
-				str === "parent" ||
-				str === "top" ||
-				str === "eval"
+				prop === "location" ||
+				prop === "parent" ||
+				prop === "top" ||
+				prop === "eval"
 			)
-				return config.globals.wrappropertybase + str;
+				return config.globals.wrappropertybase + prop;
 
-			return str;
+			if (prop === SCRAMJETCLIENT || prop === SCRAMJETFRAME) {
+				throw "fuck off";
+			}
+
+			return prop;
 		},
 		writable: false,
 		configurable: false,

@@ -1,7 +1,7 @@
 import { ScramjetClient } from "@client/client";
 import { UNSAFE_GLOBALS } from "./wrap";
 import { config } from "@/shared";
-import { SCRAMJETCLIENT } from "@/symbols";
+import { SCRAMJETCLIENT, SCRAMJETFRAME } from "@/symbols";
 
 const inc = Array.prototype.includes;
 const array_includes = (arr: any[], val: any) => inc.call(arr, val);
@@ -55,6 +55,10 @@ export default function (client: ScramjetClient, self: Self) {
 	// Obviously just wrap the prop here
 	client.Proxy(["Reflect.get", "Reflect.set"], {
 		apply(ctx) {
+			if (ctx.args[1] === SCRAMJETCLIENT || ctx.args[1] === SCRAMJETFRAME) {
+				throw "fuck off";
+			}
+
 			if (array_includes(UNSAFE_GLOBALS, ctx.args[1])) {
 				ctx.args[1] = config.globals.wrappropertybase + ctx.args[1];
 			}
@@ -64,7 +68,7 @@ export default function (client: ScramjetClient, self: Self) {
 		["Reflect.getOwnPropertyDescriptor", "Object.getOwnPropertyDescriptor"],
 		{
 			apply(ctx) {
-				if (ctx.args[1] == SCRAMJETCLIENT) {
+				if (ctx.args[1] === SCRAMJETCLIENT || ctx.args[1] === SCRAMJETFRAME) {
 					return ctx.return(undefined);
 				}
 				if (array_includes(UNSAFE_GLOBALS, ctx.args[1])) {
@@ -83,7 +87,7 @@ export default function (client: ScramjetClient, self: Self) {
 		apply(ctx) {
 			const descriptors = ctx.call();
 			for (const prop of Reflect.ownKeys(descriptors)) {
-				if (prop == SCRAMJETCLIENT) {
+				if (prop == SCRAMJETCLIENT || prop === SCRAMJETFRAME) {
 					delete descriptors[prop];
 					continue;
 				}
