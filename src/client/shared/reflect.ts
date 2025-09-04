@@ -64,13 +64,11 @@ export default function (client: ScramjetClient, self: Self) {
 		["Reflect.getOwnPropertyDescriptor", "Object.getOwnPropertyDescriptor"],
 		{
 			apply(ctx) {
-				if (ctx.args[0] == self) {
-					if (ctx.args[1] == SCRAMJETCLIENT) {
-						return ctx.return(undefined);
-					}
-					if (array_includes(UNSAFE_GLOBALS, ctx.args[1])) {
-						return ctx.return(makeFakeDescriptor(ctx.args[0], ctx.args[1]));
-					}
+				if (ctx.args[1] == SCRAMJETCLIENT) {
+					return ctx.return(undefined);
+				}
+				if (array_includes(UNSAFE_GLOBALS, ctx.args[1])) {
+					return ctx.return(makeFakeDescriptor(ctx.args[0], ctx.args[1]));
 				}
 			},
 		}
@@ -107,6 +105,27 @@ export default function (client: ScramjetClient, self: Self) {
 		apply(ctx) {
 			const entries = ctx.call();
 			ctx.return(entries.map((e: any) => [e[0], client.wrapfn(e[1])]));
+		},
+	});
+	client.Proxy("Object.assign", {
+		apply(ctx) {
+			const [target, ...sources] = ctx.args;
+			for (const source of sources) {
+				const ownkeys = client.natives.call("Reflect.ownKeys", null, source);
+				for (const key of ownkeys) {
+					const val = source[key];
+
+					if (array_includes(UNSAFE_GLOBALS, key)) {
+						target[key] = client.wrapfn(val);
+					} else if (key === "location" && target === self) {
+						// TODO: boxify
+						client.url = val;
+					} else {
+						target[key] = val;
+					}
+				}
+			}
+			ctx.return(target);
 		},
 	});
 }
