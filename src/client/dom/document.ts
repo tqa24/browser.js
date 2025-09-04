@@ -1,12 +1,13 @@
 import { rewriteHtml } from "@rewriters/html";
-import { ScramjetClient } from "@client/index";
+import { ScramjetClient, String_replace } from "@client/index";
 
 export default function (client: ScramjetClient, _self: Self) {
 	client.Proxy(
 		["Document.prototype.querySelector", "Document.prototype.querySelectorAll"],
 		{
 			apply(ctx) {
-				ctx.args[0] = (ctx.args[0] as string).replace(
+				ctx.args[0] = String_replace(
+					ctx.args[0] as string,
 					/((?:^|\s)\b\w+\[(?:src|href|data-href))[\^]?(=['"]?(?:https?[:])?\/\/)/,
 					"$1*$2"
 				);

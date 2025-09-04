@@ -1,6 +1,15 @@
 import { config, flagEnabled } from "@/shared";
 import { unrewriteUrl } from "@rewriters/url";
-import { ScramjetClient } from "@client/index";
+import {
+	Array_find,
+	Array_findIndex,
+	Array_join,
+	Array_splice,
+	ScramjetClient,
+	String_endsWith,
+	String_includes,
+	String_split,
+} from "@client/index";
 
 export const enabled = (client: ScramjetClient) =>
 	flagEnabled("cleanErrors", client.url);
@@ -14,12 +23,12 @@ export default function (client: ScramjetClient, _self: Self) {
 			const url = stack[i].getFileName();
 
 			try {
-				if (url.endsWith(config.files.all)) {
+				if (String_endsWith(url, config.files.all)) {
 					// strip stack frames including scramjet handlers from the trace
-					const lines = newstack.split("\n");
-					const line = lines.find((l) => l.includes(url));
-					lines.splice(line, 1);
-					newstack = lines.join("\n");
+					const lines = String_split(newstack, "\n");
+					const line = Array_findIndex(lines, (l) => String_includes(l, url));
+					Array_splice(lines, line, 1);
+					newstack = Array_join(lines, "\n");
 					continue;
 				}
 			} catch {}

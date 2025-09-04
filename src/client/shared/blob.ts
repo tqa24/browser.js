@@ -1,11 +1,11 @@
 import { rewriteBlob, unrewriteBlob } from "@rewriters/url";
-import { ScramjetClient } from "@client/index";
+import { ScramjetClient, String_startsWith } from "@client/index";
 export default function (client: ScramjetClient) {
 	// hide the origin from object urls from the page
 	client.Proxy("URL.createObjectURL", {
 		apply(ctx) {
 			const url: string = ctx.call();
-			if (url.startsWith("blob:")) {
+			if (String_startsWith(url, "blob:")) {
 				ctx.return(rewriteBlob(url, client.meta));
 			} else {
 				ctx.return(url);
