@@ -1,6 +1,5 @@
 import {
 	Array_filter,
-	Array_length,
 	Object_keys,
 	Reflect_apply,
 	Reflect_get,
@@ -24,7 +23,7 @@ export default function (client: ScramjetClient, _self: typeof window) {
 					const value = Reflect_get(target, prop);
 
 					if (prop === "length") {
-						return Array_length(Object_keys(proxy));
+						return Object_keys(proxy).length;
 					}
 
 					if (prop === "getNamedItem") {

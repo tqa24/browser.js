@@ -17,14 +17,6 @@ export const Reflect_apply = Reflect.apply;
 export const Global_Number = Number;
 export const Global_isNaN = isNaN;
 
-const array_length_desc = Object_getOwnPropertyDescriptor(
-	Array.prototype,
-	"length"
-).get;
-export const Array_length = (array: Array<any>) => {
-	Reflect_apply(array_length_desc, array, []);
-};
-
 // safe to be in here - ArraySpeciesCreate() will construct the array from the original realm
 const array_filter_func = Array.prototype.filter;
 export function Array_filter<T>(
