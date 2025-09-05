@@ -8,6 +8,11 @@ export const Object_keys = Object.keys;
 export const Object_values = Object.values;
 export const Object_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
 
+const object_toString_func = Object.prototype.toString;
+export const Object_toString = (obj: any): string => {
+	return Reflect_apply(object_toString_func, obj, []);
+};
+
 export const Reflect_get = Reflect.get;
 export const Reflect_set = Reflect.set;
 export const Reflect_ownKeys = Reflect.ownKeys;
@@ -16,6 +21,8 @@ export const Reflect_apply = Reflect.apply;
 
 export const Global_Number = Number;
 export const Global_isNaN = isNaN;
+
+export const Array_isArray = Array.isArray;
 
 // safe to be in here - ArraySpeciesCreate() will construct the array from the original realm
 const array_filter_func = Array.prototype.filter;
