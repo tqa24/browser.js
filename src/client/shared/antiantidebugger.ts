@@ -1,11 +1,15 @@
+import { flagEnabled } from "@/shared";
 import {
 	Array_includes,
 	Array_isArray,
+	Object_keys,
 	Object_toString,
 	Reflect_apply,
 	ScramjetClient,
 } from "@client/index";
 
+export const enabled = (client: ScramjetClient) =>
+	flagEnabled("antiAntiDebugger", client.meta.base);
 export default function (client: ScramjetClient, self: Self) {
 	client.Proxy("console.clear", {
 		apply(ctx) {
@@ -65,6 +69,17 @@ export default function (client: ScramjetClient, self: Self) {
 				if (!isSafe(argarray)) {
 					dbg.warn("Blocked potential devtools detection attempt");
 
+					return;
+				}
+
+				// https://github.com/theajack/disable-devtool/blob/master/src/utils/util.ts#L153
+				// not concerned about correctness for this one it's only this library that does this
+				if (
+					argarray.length === 1 &&
+					Array_isArray(argarray[0]) &&
+					argarray[0].length === 50 &&
+					Object_keys(argarray[0][0]).length == 500
+				) {
 					return;
 				}
 
