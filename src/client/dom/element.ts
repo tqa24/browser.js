@@ -4,7 +4,12 @@ import { rewriteHtml, unrewriteHtml } from "@rewriters/html";
 import { rewriteJs } from "@rewriters/js";
 import { rewriteUrl, unrewriteUrl } from "@rewriters/url";
 import { SCRAMJETCLIENT } from "@/symbols";
-import { ScramjetClient } from "@client/index";
+import {
+	Array_filter,
+	Array_includes,
+	ScramjetClient,
+	String_startsWith,
+} from "@client/index";
 
 const encoder = new TextEncoder();
 function bytesToBase64(bytes: Uint8Array) {
@@ -77,6 +82,7 @@ export default function (client: ScramjetClient, self: typeof window) {
 				},
 
 				set(value) {
+					// this is the rewritten version, that's intentional. TODO make this less jank
 					return this.setAttribute(attr, value);
 				},
 			});
@@ -114,8 +120,16 @@ export default function (client: ScramjetClient, self: typeof window) {
 	client.Trap("Node.prototype.baseURI", {
 		get(ctx) {
 			const node = ctx.this as Node;
-			let base = node.ownerDocument?.querySelector("base");
-			if (node instanceof Document) base = node.querySelector("base");
+			let ownerDoc: Document | null = null;
+			if (node instanceof Document) ownerDoc = node;
+			else
+				ownerDoc = client.descriptors.get("Node.prototype.ownerDocument", node);
+
+			const base = client.natives.call(
+				"Document.prototype.querySelector",
+				ownerDoc,
+				"base[href]"
+			) as HTMLBaseElement | null;
 
 			if (base) {
 				return new URL(base.href, client.url.origin).href;
@@ -132,7 +146,7 @@ export default function (client: ScramjetClient, self: typeof window) {
 		apply(ctx) {
 			const [name] = ctx.args;
 
-			if (name.startsWith("scramjet-attr")) {
+			if (String_startsWith(name, "scramjet-attr")) {
 				return ctx.return(null);
 			}
 
@@ -154,7 +168,8 @@ export default function (client: ScramjetClient, self: typeof window) {
 	client.Proxy("Element.prototype.getAttributeNames", {
 		apply(ctx) {
 			const attrNames = ctx.call() as string[];
-			const cleaned = attrNames.filter(
+			const cleaned = Array_filter(
+				attrNames,
 				(attr) => !attr.startsWith("scramjet-attr")
 			);
 
@@ -164,13 +179,15 @@ export default function (client: ScramjetClient, self: typeof window) {
 
 	client.Proxy("Element.prototype.getAttributeNode", {
 		apply(ctx) {
-			if (ctx.args[0].startsWith("scramjet-attr")) return ctx.return(null);
+			if (String_startsWith(ctx.args[0], "scramjet-attr"))
+				return ctx.return(null);
 		},
 	});
 
 	client.Proxy("Element.prototype.hasAttribute", {
 		apply(ctx) {
-			if (ctx.args[0].startsWith("scramjet-attr")) return ctx.return(false);
+			if (String_startsWith(ctx.args[0], "scramjet-attr"))
+				return ctx.return(false);
 		},
 	});
 
@@ -184,7 +201,7 @@ export default function (client: ScramjetClient, self: typeof window) {
 				if (r === "*") return true;
 				if (typeof r === "function") return false; // this can't happen but ts
 
-				return r.includes(ctx.this.tagName.toLowerCase());
+				return Array_includes(r, ctx.this.tagName.toLowerCase());
 			});
 
 			if (ruleList) {
@@ -259,7 +276,8 @@ export default function (client: ScramjetClient, self: typeof window) {
 
 	client.Proxy("Element.prototype.removeAttribute", {
 		apply(ctx) {
-			if (ctx.args[0].startsWith("scramjet-attr")) return ctx.return(undefined);
+			if (String_startsWith(ctx.args[0], "scramjet-attr"))
+				return ctx.return(undefined);
 			if (
 				client.natives.call(
 					"Element.prototype.hasAttribute",
@@ -274,7 +292,8 @@ export default function (client: ScramjetClient, self: typeof window) {
 
 	client.Proxy("Element.prototype.toggleAttribute", {
 		apply(ctx) {
-			if (ctx.args[0].startsWith("scramjet-attr")) return ctx.return(false);
+			if (String_startsWith(ctx.args[0], "scramjet-attr"))
+				return ctx.return(false);
 			if (
 				client.natives.call(
 					"Element.prototype.hasAttribute",
@@ -311,6 +330,7 @@ export default function (client: ScramjetClient, self: typeof window) {
 			ctx.set(newval);
 		},
 		get(ctx) {
+			// TODO: box
 			if (ctx.this instanceof self.HTMLScriptElement) {
 				const scriptSource = client.natives.call(
 					"Element.prototype.getAttribute",
@@ -380,7 +400,17 @@ export default function (client: ScramjetClient, self: typeof window) {
 	});
 	client.Proxy("Text.prototype.appendData", {
 		apply(ctx) {
-			if (ctx.this.parentElement?.tagName === "STYLE") {
+			const parentElement = client.descriptors.get(
+				"Node.prototype.parentElement",
+				ctx.this
+			);
+			const tagName = client.descriptors.get(
+				"Element.prototype.tagName",
+				parentElement
+			);
+
+			// TODO: surely this also affects scripts?
+			if (tagName === "STYLE") {
 				ctx.args[0] = rewriteCss(ctx.args[0], client.meta);
 			}
 		},
@@ -388,12 +418,21 @@ export default function (client: ScramjetClient, self: typeof window) {
 
 	client.Proxy("Text.prototype.insertData", {
 		apply(ctx) {
-			if (ctx.this.parentElement?.tagName === "STYLE") {
+			const parentElement = client.descriptors.get(
+				"Node.prototype.parentElement",
+				ctx.this
+			);
+			const tagName = client.descriptors.get(
+				"Element.prototype.tagName",
+				parentElement
+			);
+			if (tagName === "STYLE") {
 				ctx.args[1] = rewriteCss(ctx.args[1], client.meta);
 			}
 		},
 	});
 
+	// TODO box the rest of these
 	client.Proxy("Text.prototype.replaceData", {
 		apply(ctx) {
 			if (ctx.this.parentElement?.tagName === "STYLE") {
@@ -477,8 +516,12 @@ export default function (client: ScramjetClient, self: typeof window) {
 			apply(ctx) {
 				const doc = ctx.call();
 				if (doc) {
-					// we trap the contentDocument, this is really the scramjet version
-					return ctx.return(ctx.this.contentDocument);
+					const contentDocument = client.descriptors.get(
+						`${ctx.this.constructor.name}.prototype.contentDocument`,
+						ctx.this
+					) as Document;
+
+					return ctx.return(contentDocument);
 				}
 			},
 		}

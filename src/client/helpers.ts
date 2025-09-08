@@ -7,6 +7,7 @@ export function getOwnPropertyDescriptorHandler(target, prop) {
 export const Object_keys = Object.keys;
 export const Object_values = Object.values;
 export const Object_getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+export const Object_getOwnPropertyNames = Object.getOwnPropertyNames;
 
 const object_toString_func = Object.prototype.toString;
 export const Object_toString = (obj: any): string => {

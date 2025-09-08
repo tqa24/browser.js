@@ -1,6 +1,7 @@
 import { rewriteCss, unrewriteCss } from "@rewriters/css";
 import {
 	Array_includes,
+	Object_getOwnPropertyNames,
 	Reflect_apply,
 	Reflect_get,
 	Reflect_set,
@@ -8,7 +9,7 @@ import {
 } from "@client/index";
 
 export default function (client: ScramjetClient) {
-	const CSSStyleDeclaration_keys = Object.getOwnPropertyNames(
+	const CSSStyleDeclaration_keys = Object_getOwnPropertyNames(
 		CSSStyleDeclaration.prototype
 	);
 
