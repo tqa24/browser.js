@@ -13,6 +13,7 @@ export default function (client: ScramjetClient, self: typeof window) {
 					scramjet$token: data.scramjet$token,
 					scramjet$type: "cookie",
 				};
+				// TODO: abstract and also what...
 				client.serviceWorker.controller.postMessage(msg);
 			}
 		}

@@ -32,7 +32,17 @@ export default function (client: ScramjetClient) {
 			const f = ctx.get() as HTMLIFrameElement | null;
 			if (!f) return f;
 
-			const win = f.ownerDocument.defaultView;
+			const ownerdoc = client.descriptors.get(
+				"Node.prototype.ownerDocument",
+				f
+			);
+			if (!ownerdoc) return null;
+			const win = client.descriptors.get(
+				"Document.prototype.defaultView",
+				ownerdoc
+			) as Window | null;
+			if (!win) return null;
+
 			if (win[SCRAMJETCLIENT]) {
 				// then this is a subframe in a scramjet context, and it's safe to pass back the real iframe
 				return f;

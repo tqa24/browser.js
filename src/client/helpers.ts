@@ -84,6 +84,14 @@ export function Array_findIndex<T>(
 	return Reflect_apply(array_findIndex_func, array, [func]);
 }
 
+const array_map_func = Array.prototype.map;
+export function Array_map<T, U>(
+	array: Array<T>,
+	func: (arg: T, index: number, array: Array<T>) => U
+): Array<U> {
+	return Reflect_apply(array_map_func, array, [func]);
+}
+
 const string_slice_func = String.prototype.slice;
 export function String_slice(str: string, start: number, end?: number): string {
 	return Reflect_apply(string_slice_func, str, [start, end]);
@@ -120,4 +128,9 @@ export function String_split(
 const string_includes_func = String.prototype.includes;
 export function String_includes(str: string, search: string) {
 	return Reflect_apply(string_includes_func, str, [search]);
+}
+
+const string_substring_func = String.prototype.substring;
+export function String_substring(str: string, start: number, end?: number) {
+	return Reflect_apply(string_substring_func, str, [start, end]);
 }

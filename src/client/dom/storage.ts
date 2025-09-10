@@ -1,4 +1,11 @@
-import { ScramjetClient } from "@client/index";
+import {
+	Array_filter,
+	Array_map,
+	Reflect_ownKeys,
+	ScramjetClient,
+	String_startsWith,
+	String_substring,
+} from "@client/index";
 
 export default function (client: ScramjetClient, self: typeof window) {
 	const handler: ProxyHandler<Storage> = {
@@ -58,11 +65,16 @@ export default function (client: ScramjetClient, self: typeof window) {
 		},
 
 		ownKeys(target) {
-			return Reflect.ownKeys(target)
-				.filter((f) => typeof f === "string" && f.startsWith(client.url.host))
-				.map((f) =>
-					typeof f === "string" ? f.substring(client.url.host.length + 1) : f
-				);
+			return Array_map(
+				Array_filter(
+					Reflect_ownKeys(target),
+					(f) => typeof f === "string" && String_startsWith(f, client.url.host)
+				),
+				(f) =>
+					typeof f === "string"
+						? String_substring(f, client.url.host.length + 1)
+						: f
+			);
 		},
 
 		getOwnPropertyDescriptor(target, property) {
