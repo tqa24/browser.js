@@ -91,7 +91,7 @@ export class BareClient {
 	 * Create a BareClient. Calls to fetch and connect will wait for an implementation to be ready.
 	 */
 	constructor() {
-		this.transport = new LibcurlClient({
+		this.transport = new EpoxyTransport({
 			wisp: config.wisp,
 		});
 	}
