@@ -148,7 +148,6 @@ export default function (client: ScramjetClient, self: typeof globalThis) {
 		if (v === location) debugger;
 		if (iswindow) {
 			// if (v === self.parent) debugger;
-			// if (v === self.document) debugger;
 			if (v === self.top) debugger;
 		}
 

@@ -1,9 +1,4 @@
-type BareResponseFetch = Response & {
-	finalURL?: string;
-	rawHeaders: Record<string, string | string[]>;
-};
-type BareClient = any;
-import { EpoxyClient } from "@mercuryworkshop/epoxy-tls";
+import { BareClient, BareResponseFetch } from "../bare-mux-custom";
 
 import { MessageW2C, ScramjetServiceWorker } from "@/worker";
 import { renderError } from "@/worker/error";
@@ -233,7 +228,8 @@ export async function handleFetch(
 			request.destination === "iframe" &&
 			request.mode === "navigate" &&
 			request.referrer &&
-			request.referrer !== "no-referrer"
+			request.referrer !== "no-referrer" &&
+			request.referrer !== location.origin + config.prefix + "no-referrer"
 		) {
 			// Trace back through the referrer chain, checking if each was an iframe navigation using the clients, until we find a non-iframe parent on a non-proxy page
 			let currentReferrer = request.referrer;
@@ -291,13 +287,18 @@ export async function handleFetch(
 		if (
 			request.referrer &&
 			request.referrer !== "" &&
-			request.referrer !== "no-referrer"
+			request.referrer !== "no-referrer" &&
+			request.referrer !== location.origin + config.prefix + "no-referrer"
 		) {
 			if (request.referrer.includes(config.prefix)) {
 				const unrewrittenReferrer = unrewriteUrl(request.referrer);
 				if (unrewrittenReferrer) {
 					const referrerUrl = new URL(unrewrittenReferrer);
-					siteDirective = await getSiteDirective(meta, referrerUrl, this.epoxy);
+					siteDirective = await getSiteDirective(
+						meta,
+						referrerUrl,
+						this.client
+					);
 				}
 			}
 		}
@@ -325,7 +326,7 @@ export async function handleFetch(
 
 		const response =
 			(await ev.response) ||
-			((await this.epoxy.fetch(ev.url, {
+			((await this.client.fetch(ev.url, {
 				method: ev.method,
 				body: ev.body,
 				headers: ev.requestHeaders,
@@ -347,7 +348,7 @@ export async function handleFetch(
 			response,
 			this.cookieStore,
 			client,
-			this.epoxy,
+			this.client,
 			this,
 			request.referrer
 		);
@@ -387,7 +388,7 @@ async function handleResponse(
 	response: BareResponseFetch,
 	cookieStore: CookieStore,
 	client: Client,
-	bareClient: EpoxyClient,
+	bareClient: BareClient,
 	swtarget: ScramjetServiceWorker,
 	referrer: string
 ): Promise<Response> {
@@ -492,9 +493,7 @@ async function handleResponse(
 
 			// there's no reliable way of finding the top level client that made the request
 			// just take the first one and hope
-			let clis = await clients.matchAll({
-				type: "window",
-			});
+			let clis = await clients.matchAll({});
 			// only want controller windows
 			clis = clis.filter((e) => !e.url.includes(config.prefix));
 			if (clis.length < 1) {

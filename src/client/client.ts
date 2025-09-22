@@ -1,10 +1,5 @@
 import { ScramjetFrame } from "@/controller/frame";
-import initEpoxy, {
-	EpoxyClient,
-	EpoxyClientOptions,
-	EpoxyHandlers,
-	info as epoxyInfo,
-} from "@mercuryworkshop/epoxy-tls";
+import { BareClient } from "../bare-mux-custom";
 import { SCRAMJETCLIENT, SCRAMJETFRAME } from "@/symbols";
 import { getOwnPropertyDescriptorHandler } from "@client/helpers";
 import { createLocationProxy } from "@client/location";
@@ -69,7 +64,7 @@ export type Trap<T> = {
 export class ScramjetClient {
 	locationProxy: any;
 	serviceWorker: ServiceWorkerContainer;
-	epoxy: EpoxyClient;
+	bare: BareClient;
 
 	natives: NativeStore;
 	descriptors: DescriptorStore;
@@ -101,13 +96,22 @@ export class ScramjetClient {
 		}
 
 		if (iswindow) {
-			if (SCRAMJETCLIENT in global.parent) {
-				this.box = global.parent[SCRAMJETCLIENT].box;
-			} else if (SCRAMJETCLIENT in global.top) {
-				this.box = global.top[SCRAMJETCLIENT].box;
-			} else if (global.opener && SCRAMJETCLIENT in global.opener) {
-				this.box = global.opener[SCRAMJETCLIENT].box;
-			} else {
+			try {
+				if (SCRAMJETCLIENT in global.parent) {
+					this.box = global.parent[SCRAMJETCLIENT].box;
+				}
+			} catch {}
+			try {
+				if (SCRAMJETCLIENT in global.top) {
+					this.box = global.top[SCRAMJETCLIENT].box;
+				}
+			} catch {}
+			try {
+				if (global.opener && SCRAMJETCLIENT in global.opener) {
+					this.box = global.opener[SCRAMJETCLIENT].box;
+				}
+			} catch {}
+			if (!this.box) {
 				dbg.warn("Creating SingletonBox");
 				this.box = new SingletonBox(this);
 			}
@@ -117,30 +121,7 @@ export class ScramjetClient {
 
 		this.box.registerClient(this, global as Self);
 
-		initEpoxy().then(() => {
-			let options = new EpoxyClientOptions();
-			options.user_agent = navigator.userAgent;
-			this.epoxy = new EpoxyClient(config.wisp, options);
-		});
-
-		if (iswindow) {
-			// this.bare = new EpoxyClient();
-			// this.bare = new BareClient();
-		} else {
-			// this.bare = new BareClient(
-			// 	new Promise((resolve) => {
-			// 		addEventListener("message", ({ data }) => {
-			// 			if (typeof data !== "object") return;
-			// 			if (
-			// 				"$scramjet$type" in data &&
-			// 				data.$scramjet$type === "baremuxinit"
-			// 			) {
-			// 				resolve(data.port);
-			// 			}
-			// 		});
-			// 	})
-			// );
-		}
+		this.bare = new BareClient();
 
 		this.serviceWorker = this.global.navigator.serviceWorker;
 

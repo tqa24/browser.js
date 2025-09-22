@@ -2,12 +2,16 @@ import { rewriteHtml } from "@rewriters/html";
 import { ScramjetClient, String_replace } from "@client/index";
 
 export default function (client: ScramjetClient, _self: Self) {
+	const tostring = String;
 	client.Proxy(
 		["Document.prototype.querySelector", "Document.prototype.querySelectorAll"],
 		{
 			apply(ctx) {
+				// you can do querySelector("a[href='http://example.com']")
+				// which won't work when we rewrite the url
+				// so we need to rewrite the selector here
 				ctx.args[0] = String_replace(
-					ctx.args[0] as string,
+					tostring(ctx.args[0]),
 					/((?:^|\s)\b\w+\[(?:src|href|data-href))[\^]?(=['"]?(?:https?[:])?\/\/)/,
 					"$1*$2"
 				);
@@ -26,6 +30,12 @@ export default function (client: ScramjetClient, _self: Self) {
 						false
 					);
 				} catch {}
+		},
+	});
+
+	client.Trap("Document.prototype.referrer", {
+		get() {
+			return client.url.toString();
 		},
 	});
 

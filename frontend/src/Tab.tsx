@@ -13,7 +13,7 @@ import { createMenu } from "./components/Menu";
 import { AboutPage } from "./pages/AboutPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { scramjet } from "./main";
+import { scramjet, serviceWorkerReady } from "./main";
 import { DownloadsPage } from "./pages/DownloadsPage";
 import iconBack from "@ktibow/iconset-ion/arrow-back";
 import iconForwards from "@ktibow/iconset-ion/arrow-forward";
@@ -46,13 +46,8 @@ export class Tab extends StatefulClass {
 	devtoolsFrame: ScramjetFrame;
 	screenshot: string | null = null;
 
-	dragoffset: number;
-	dragpos: number;
-	startdragpos: number;
-
-	width: number;
-	pos: number;
 	icon: string;
+	justCreated: boolean = true;
 
 	history: History;
 
@@ -215,7 +210,14 @@ export class Tab extends StatefulClass {
 			this.internalpage = null;
 			// placeholder title until the page fills in
 			this.title = url.href;
-			this.frame.go(url);
+
+			if (!navigator.serviceWorker.controller) {
+				serviceWorkerReady.then(() => {
+					this.frame.go(url);
+				});
+			} else {
+				this.frame.go(url);
+			}
 		}
 	}
 
@@ -348,6 +350,18 @@ function injectDevtools(client: ScramjetClient, tab: Tab) {
 		});
 	});
 
+	// this is needed because if the top level scramjet frame happened to be sandboxed, the target iframe will be blocked from navigating its "ancestor" devtools frame
+	devtoolsFrameClient.natives.call(
+		"eval",
+		null,
+		`
+    window.addEventListener("message", (e) => {
+      if (e.data && e.data.$type === "navigate") {
+        window.location = e.data.value;
+      }
+    });
+  `
+	);
 	// VERY IMPORTANT: GIVE CHII THE *PROXIED* VERSION OF THE DEVTOOLS FRAME, AND NO REAL CTORS
 	// this is needed for the interceptors to work - but also stops sbx
 	//@ts-expect-error
@@ -373,13 +387,21 @@ function injectDevtools(client: ScramjetClient, tab: Tab) {
 		},
 		// TODO this is STILL sbx annoyingly because the functions don't have their ctors intercepted
 		set src(value) {
-			devtoolsFrameClient.url = value;
+			console.log(devtoolsFrameClient);
+			console.log(scramjet.encodeUrl(value));
+			devtoolsFrameClient.natives.call(
+				"window.postMessage",
+				devtoolsFrameClient.global,
+				{ $type: "navigate", value: scramjet.encodeUrl(value) },
+				"*"
+			);
 		},
 		get src() {
 			return devtoolsFrameClient.url;
 		},
 	};
 	client.global.document.head.appendChild(devtoolsScript);
+
 	// requestInspectElement.listen(([elm, t]) => {
 	// 	if (t != tab) return;
 	// 	// @ts-expect-error
@@ -779,8 +801,7 @@ function injectContextMenu(client: ScramjetClient, tab: Tab) {
 		yoff += y;
 
 		createMenu(
-			xoff + e.clientX,
-			yoff + e.clientY,
+			{ left: xoff + e.clientX, top: yoff + e.clientY },
 			pageContextItems(client, tab, e)
 		);
 		e.preventDefault();
