@@ -7,8 +7,8 @@ import {
 	setConfig,
 	ScramjetClient,
 	rewriteJs,
-	asyncSetWasm,
 } from "@mercuryworkshop/scramjet/bundled";
+
 setConfig({
 	wisp: "ws://localhost",
 	prefix: "/scramjet/",
@@ -211,5 +211,10 @@ App.style = css`
 		overflow: auto;
 	}
 `;
-
-app.replaceWith(html`<${App}></${App}>`);
+const root = document.getElementById("app");
+try {
+	root.replaceWith(html`<${App} />`);
+} catch (e) {
+	root.replaceWith(document.createTextNode("" + e));
+	throw e;
+}
