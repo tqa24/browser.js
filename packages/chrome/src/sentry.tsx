@@ -27,6 +27,19 @@ if (import.meta.env.VITE_PUTER_BRANDING) {
 			})
 		);
 	}
+	if (import.meta.env.VITE_PLAUSIBLE_URL) {
+		let plausibleSdk = (
+			<script
+				src={import.meta.env.VITE_PLAUSIBLE_URL}
+				crossorigin="anonymous"
+			></script>
+		);
+		document.head.append(plausibleSdk);
+		plausibleSdk.onload = () => {
+			// @ts-expect-error no types yet
+			plausible.init();
+		};
+	}
 
 	await Promise.all(promises);
 }

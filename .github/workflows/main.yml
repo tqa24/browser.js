@@ -270,7 +270,7 @@ jobs:
       - name: Build Frontend
         run: |
           SKIP_CORE=1 pnpm build
-          VITE_SENTRY_URL="https://js.sentry-cdn.com/89b0486bec1f3d54d07953d81a046161.min.js" VITE_PUTER_BRANDING=1 VITE_ISOLATION_ORIGIN="https://puter.zone" pnpm build:chrome
+          VITE_SENTRY_URL="https://js.sentry-cdn.com/89b0486bec1f3d54d07953d81a046161.min.js" VITE_PUTER_BRANDING=1 VITE_PLAUSIBLE_URL="https://plausible.io/js/pa-NRxWcAzajMavHo05JTRcw.js" VITE_ISOLATION_ORIGIN="https://puter.zone" pnpm build:chrome
 
       - name: Upload Artifact (frontend)
         uses: actions/upload-artifact@v4
