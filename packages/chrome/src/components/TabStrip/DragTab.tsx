@@ -13,12 +13,72 @@ import {
 import { Icon } from "@components/Icon";
 import { tabsService } from "../..";
 
-/**
- * Builds the shared right-click context menu for a tab. Used by both
- * {@link DragTab} and {@link VerticalPinTile} so the available actions (and the
- * Pin/Unpin toggle) stay in sync. Private to this module since both consumers
- * live here.
- */
+type VisualTab = {
+	tab: Tab;
+	root: HTMLElement;
+	closing: boolean;
+};
+
+export function createMiddleClickCloseHandler(
+	getVisualTabs: () => VisualTab[],
+	destroyTab: (tab: Tab) => void
+) {
+	let repeatState: { slot: number; bounds: DOMRect } | null = null;
+	let resetTimeout: number | null = null;
+
+	const resetRepeatState = () => {
+		repeatState = null;
+		if (resetTimeout !== null) clearTimeout(resetTimeout);
+		resetTimeout = null;
+	};
+
+	return (e: MouseEvent) => {
+		if (e.button !== 1) return;
+
+		const visualTabs = getVisualTabs();
+		const liveTabs = visualTabs.filter((tab) => !tab.closing);
+		if (!(e.target instanceof Node)) return;
+
+		const clickedTab = visualTabs.find(
+			(tab) => tab.root === e.target || tab.root.contains(e.target as Node)
+		);
+
+		let slot =
+			clickedTab && !clickedTab.closing ? liveTabs.indexOf(clickedTab) : -1;
+		let bounds: DOMRect | null = null;
+		const stateBounds: DOMRect | undefined = repeatState?.bounds;
+
+		if (slot !== -1 && clickedTab) {
+			bounds = clickedTab.root
+				.querySelector(".hover-area")!
+				.getBoundingClientRect();
+		} else if (
+			stateBounds &&
+			stateBounds.left <= e.clientX &&
+			stateBounds.right >= e.clientX &&
+			stateBounds.top <= e.clientY &&
+			stateBounds.bottom >= e.clientY
+		) {
+			slot = repeatState!.slot;
+			bounds = stateBounds;
+		}
+
+		const tabToClose = liveTabs[slot];
+		if (!tabToClose || !bounds) {
+			resetRepeatState();
+			return;
+		}
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		repeatState = { slot, bounds };
+		if (resetTimeout !== null) clearTimeout(resetTimeout);
+		resetTimeout = setTimeout(resetRepeatState, 800);
+		destroyTab(tabToClose.tab);
+	};
+}
+
 function buildTabContextMenu(tab: Tab, destroy: () => void) {
 	return [
 		{
@@ -175,7 +235,7 @@ export function DragTab(
 
 	return (
 		<div
-			style="z-index: 0;"
+			style="z-index: 1;"
 			class={use(this.tooltipHovered).map((hovered) =>
 				hovered ? `tab ${orientation} hovered` : `tab ${orientation}`
 			)}
@@ -184,7 +244,7 @@ export function DragTab(
 				if (e.target !== this.root || e.propertyName !== "transform") return;
 				// Clears programmatically assigned move transition/z-index after tab translate animation ends.
 				this.root.style.transition = "";
-				this.root.style.zIndex = "0";
+				this.root.style.zIndex = "1";
 				this.transitionend();
 			}}
 		>
@@ -194,11 +254,6 @@ export function DragTab(
 					this.mousedown(e);
 					e.stopPropagation();
 					e.preventDefault();
-				}}
-				on:auxclick={(e: MouseEvent) => {
-					if (e.button === 1) {
-						this.destroy();
-					}
 				}}
 				on:mouseenter={() => {
 					this.tooltipHovered = true;
@@ -237,10 +292,6 @@ export function DragTab(
 							<button
 								class="close"
 								on:click={(e: MouseEvent) => {
-									e.stopPropagation();
-									this.destroy();
-								}}
-								on:auxclick={(e: MouseEvent) => {
 									e.stopPropagation();
 									this.destroy();
 								}}
@@ -284,16 +335,9 @@ DragTab.style = css`
 		anchor-name: --hovered-tab;
 	}
 
-	:scope.vertical .dragroot {
-		overflow: hidden;
-	}
-
 	.hover-area {
 		position: absolute;
-		top: -3px;
-		left: -3px;
-		right: -3px;
-		bottom: -3px;
+		inset: calc(-1 * var(--space-xs));
 		pointer-events: auto;
 	}
 
@@ -304,14 +348,14 @@ DragTab.style = css`
 
 		color: var(--tab_background_text);
 
-		border-radius: var(--radius);
-		padding: 7px 8px;
+		border-radius: var(--radius-md);
+		padding: var(--space-md);
 
 		background: var(--background_tab_inactive);
 
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: var(--space-sm);
 	}
 	.favicon {
 		width: 16px;
@@ -320,7 +364,7 @@ DragTab.style = css`
 	}
 	.main span {
 		flex: 1;
-		font-size: 12px;
+		font-size: 0.75rem;
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
@@ -432,7 +476,10 @@ export function VerticalPinTile(
 				this.dragStart(e);
 			}}
 			on:auxclick={(e: MouseEvent) => {
-				if (e.button === 1) this.destroy();
+				if (e.button !== 1) return;
+				e.preventDefault();
+				e.stopPropagation();
+				this.destroy();
 			}}
 		>
 			<div class="pin-favicon">
@@ -446,7 +493,7 @@ export function VerticalPinTile(
 
 VerticalPinTile.style = css`
 	:scope {
-		border-radius: var(--radius);
+		border-radius: var(--radius-md);
 		background: var(--background_tab_inactive);
 		color: var(--tab_background_text);
 

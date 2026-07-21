@@ -5,7 +5,10 @@ import { TabHoverCard } from "@components/TabStrip/TabHoverCard";
 import type { Tab } from "../../Tab/Tab";
 // import html2canvas from "html2canvas";
 import { setContextMenu } from "@components/Menu";
-import { DragTab } from "@components/TabStrip/DragTab";
+import {
+	createMiddleClickCloseHandler,
+	DragTab,
+} from "@components/TabStrip/DragTab";
 import { requestUnfocusFrames } from "@components/Shell";
 
 type VisualTab = {
@@ -51,14 +54,16 @@ export function TabStrip(
 
 	const [lock, unlock] = requestUnfocusFrames();
 
-	const TAB_PADDING = 6;
 	const TAB_MAX_SIZE = 231;
 	const PIN_MAX_SIZE = 36;
 	const TAB_TRANSITION = "225ms cubic-bezier(.43,.52,0,1.15)";
+	const TAB_OPEN_DURATION = 200;
+	const TAB_OPEN_EASING = "cubic-bezier(.25,.5,0,1.15)";
 	const TAB_STAGGER_STEP = 18;
 	const TAB_STAGGER_MAX = 144;
 
 	let transitioningTabs = 0;
+	let afterAnimation: Animation | null = null;
 
 	const getRootWidth = () => {
 		const style = getComputedStyle(this.container);
@@ -88,8 +93,14 @@ export function TabStrip(
 	const getLayoutStart = () => {
 		return this.leftEl.offsetWidth;
 	};
+	const getTabPadding = () =>
+		parseFloat(getComputedStyle(document.documentElement).fontSize) *
+		parseFloat(
+			getComputedStyle(document.documentElement).getPropertyValue("--space-xs")
+		);
 	const getTabWidth = () => {
 		let total = getRootWidth();
+		const tabPadding = getTabPadding();
 		const visibleTabCount = this.visualtabs.filter(
 			(tab) => !tab.closing
 		).length;
@@ -102,7 +113,7 @@ export function TabStrip(
 		// Remove the padding for every gap between tabs (pinned tabs sit in the
 		// same row, so they contribute gaps too) and the fixed width of each
 		// pinned tab, then split whatever is left between the non-pinned tabs.
-		total -= TAB_PADDING * (visibleTabCount - 1);
+		total -= tabPadding * (visibleTabCount - 1);
 		total -= PIN_MAX_SIZE * visiblePinnedCount;
 
 		const each = total / Math.max(nonPinnedCount, 1);
@@ -132,8 +143,9 @@ export function TabStrip(
 		});
 	};
 
-	const layoutTabs = (transition: boolean) => {
+	const layoutTabs = (transition: boolean, opening: boolean = false) => {
 		const width = getTabWidth();
+		const tabPadding = getTabPadding();
 
 		reorderTabs();
 
@@ -157,7 +169,11 @@ export function TabStrip(
 
 			tab.root.style.transform = `translateX(${tabPos}px)`;
 
-			if (transition && tab.dragpos == -1 && tab.pos != tabPos) {
+			if (
+				transition &&
+				tab.dragpos == -1 &&
+				Math.abs(tab.pos - tabPos) > 0.01
+			) {
 				const delay = Math.min(
 					staggerIndex * TAB_STAGGER_STEP,
 					TAB_STAGGER_MAX
@@ -167,14 +183,44 @@ export function TabStrip(
 				movedTabs++;
 			}
 
-			dragpos = Math.max(dragpos, tab.dragpos + tabWidth + TAB_PADDING);
+			dragpos = Math.max(dragpos, tab.dragpos + tabWidth + tabPadding);
 
 			tab.pos = tabPos;
 			tab.width = tabWidth;
 
-			currpos += tabWidth + TAB_PADDING;
+			currpos += tabWidth + tabPadding;
 			staggerIndex++;
 		}
+
+		const afterpos = Math.max(dragpos, currpos);
+		const afterTransform = `translateX(${afterpos}px)`;
+
+		if (opening) {
+			const currentTransform = getComputedStyle(this.afterEl).transform;
+			afterAnimation?.cancel();
+			this.afterEl.style.transition = "";
+			this.afterEl.style.transform = afterTransform;
+
+			const animation = this.afterEl.animate(
+				[{ transform: currentTransform }, { transform: afterTransform }],
+				{
+					duration: TAB_OPEN_DURATION,
+					easing: TAB_OPEN_EASING,
+				}
+			);
+			afterAnimation = animation;
+			animation.addEventListener(
+				"finish",
+				() => {
+					if (afterAnimation === animation) afterAnimation = null;
+				},
+				{ once: true }
+			);
+			return;
+		}
+
+		afterAnimation?.cancel();
+		afterAnimation = null;
 
 		if (transition && movedTabs > 0) {
 			const afterDelay = Math.min(
@@ -184,8 +230,7 @@ export function TabStrip(
 			this.afterEl.style.transition = `transform ${TAB_TRANSITION} ${afterDelay}ms`;
 		}
 
-		const afterpos = Math.max(dragpos, currpos);
-		this.afterEl.style.transform = `translateX(${afterpos}px)`;
+		this.afterEl.style.transform = afterTransform;
 	};
 
 	const getMaxDragPos = () => {
@@ -223,7 +268,7 @@ export function TabStrip(
 		tab.dragpos = -1;
 		layoutTabs(true);
 		if (!tab.root.style.transition) {
-			tab.root.style.zIndex = "0";
+			tab.root.style.zIndex = "1";
 		}
 		this.currentlydragging = null;
 		unlock();
@@ -267,6 +312,7 @@ export function TabStrip(
 
 	use(this.tabs).listen(() => {
 		let newvisualtabs: VisualTab[] = [];
+		let opening = false;
 
 		for (let index = 0; index < this.tabs.length; index++) {
 			let tab = this.tabs[index];
@@ -274,6 +320,15 @@ export function TabStrip(
 			let visualtab = this.visualtabs.find((t) => t.tab === tab);
 
 			if (!visualtab) {
+				opening = true;
+				const precedingTab = newvisualtabs.at(-1);
+				const precedingWidth = precedingTab
+					? precedingTab.width ||
+						(precedingTab.tab.pinned ? PIN_MAX_SIZE : getTabWidth())
+					: 0;
+				const initialPos = precedingTab
+					? precedingTab.pos + precedingWidth + getTabPadding()
+					: getLayoutStart();
 				let dt = (
 					<DragTab
 						id={tab.id}
@@ -289,6 +344,7 @@ export function TabStrip(
 						transitionend={transitionend}
 					/>
 				);
+				dt.style.transform = `translateX(${initialPos}px)`;
 				visualtab = {
 					tab,
 					root: dt,
@@ -297,7 +353,7 @@ export function TabStrip(
 					startdragpos: -1,
 					closing: false,
 					width: 0,
-					pos: getLayoutStart() + index * (getTabWidth() + TAB_PADDING),
+					pos: initialPos,
 				};
 			}
 
@@ -336,16 +392,7 @@ export function TabStrip(
 
 		this.visualtabs = newvisualtabs;
 
-		let slotIndex = 0;
-		const slotWidth = getTabWidth();
-		for (const vt of this.visualtabs) {
-			if (!vt.closing && vt.dragpos === -1) {
-				vt.pos = getLayoutStart() + slotIndex * (slotWidth + TAB_PADDING);
-				slotIndex++;
-			}
-		}
-
-		setTimeout(() => layoutTabs(true), 10);
+		setTimeout(() => layoutTabs(true, opening), 10);
 	});
 
 	this.cx.mount = () => {
@@ -358,6 +405,15 @@ export function TabStrip(
 			layoutTabs(false);
 		};
 		window.addEventListener("resize", resizeHandler);
+		let resizeObserver: ResizeObserver | null = new ResizeObserver(() => {
+			if (!this.root.isConnected) {
+				resizeObserver?.disconnect();
+				resizeObserver = null;
+				return;
+			}
+			layoutTabs(false);
+		});
+		resizeObserver.observe(this.container);
 
 		setContextMenu(this.root, [
 			{
@@ -377,6 +433,10 @@ export function TabStrip(
 		<div
 			id="tabstrip"
 			class:inline={this.inline ?? false}
+			on:auxclick={createMiddleClickCloseHandler(
+				() => this.visualtabs,
+				(tab) => this.destroyTab(tab)
+			)}
 			this={use(this.container)}
 		>
 			<div class="extra left" this={use(this.leftEl)}></div>
@@ -399,8 +459,8 @@ export function TabStrip(
 TabStrip.style = css`
 	:scope {
 		background: var(--frame);
-		padding: var(--tab-padding) 12px;
-		height: calc(var(--tab-height) + calc(var(--tab-padding) * 2));
+		padding: var(--space-sm);
+		height: calc(var(--tab-height) + calc(var(--space-sm) * 2));
 		z-index: 2;
 		position: relative;
 	}
@@ -435,6 +495,9 @@ TabStrip.style = css`
 	}
 	.right {
 		right: 0;
+	}
+	.after {
+		z-index: 0;
 	}
 `;
 

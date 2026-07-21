@@ -166,7 +166,7 @@ Menu.style = css`
 		left: var(--x);
 		background-color: var(--popup);
 		border: 1px solid var(--popup_border);
-		border-radius: var(--radius);
+		border-radius: var(--radius-md);
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 		z-index: 1000;
 		display: flex;
@@ -192,13 +192,13 @@ Menu.style = css`
 		background: none;
 		border: none;
 		font-size: 0.8em;
-		padding: 0.75em 1.25em;
+		padding: var(--space-lg) var(--space-xxl);
 		text-align: left;
 		color: var(--toolbar_text);
 
 		display: flex;
 		align-items: center;
-		gap: 1em;
+		gap: var(--space-xl);
 	}
 
 	img {

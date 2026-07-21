@@ -1,11 +1,15 @@
 import { css, type FC } from "dreamland/core";
 import type { Tab } from "../../Tab/Tab";
-import { DragTab, VerticalPinTile } from "./DragTab";
+import {
+	createMiddleClickCloseHandler,
+	DragTab,
+	VerticalPinTile,
+} from "./DragTab";
 import { TabHoverCard } from "@components/TabStrip/TabHoverCard";
 import { Icon } from "@components/Icon";
 import { iconAdd } from "../../icons";
 import { requestUnfocusFrames } from "@components/Shell";
-import { tabsService } from "../..";
+import { settingsService, tabsService } from "../..";
 
 type VisualTab = {
 	tab: Tab;
@@ -51,12 +55,14 @@ export function Sidebar(
 	const SIDEBAR_MIN_WIDTH = this.layout === "vertical" ? 190 : 48;
 	const SIDEBAR_MAX_WIDTH = 520;
 
-	const TAB_PADDING = 6;
 	const TAB_TRANSITION = "225ms cubic-bezier(.43,.52,0,1.15)";
 	const TAB_STAGGER_STEP = 18;
 	const TAB_STAGGER_MAX = 144;
 
 	let transitioningTabs = 0;
+
+	const getRemAbsoluteSize = (size: number) =>
+		size * parseFloat(getComputedStyle(document.documentElement).fontSize);
 
 	const getRootHeight = () => {
 		const style = getComputedStyle(this.container);
@@ -95,6 +101,15 @@ export function Sidebar(
 	const getLayoutStart = () => {
 		return this.topEl.offsetHeight;
 	};
+	const getTabPadding = () => {
+		return getRemAbsoluteSize(
+			parseFloat(
+				getComputedStyle(document.documentElement).getPropertyValue(
+					"--space-xxs"
+				)
+			)
+		);
+	};
 
 	const getTabHeight = () => {
 		// Measure the inner `.main` row rather than the tab root. When a tab
@@ -113,10 +128,12 @@ export function Sidebar(
 			if (measured > 0) return measured;
 		}
 
-		const cssHeight = parseFloat(
-			getComputedStyle(document.documentElement)
-				.getPropertyValue("--tab-height")
-				.trim()
+		const cssHeight = getRemAbsoluteSize(
+			parseFloat(
+				getComputedStyle(document.documentElement).getPropertyValue(
+					"--space-xs"
+				)
+			)
 		);
 		return Number.isFinite(cssHeight) && cssHeight > 0 ? cssHeight : 36;
 	};
@@ -137,6 +154,8 @@ export function Sidebar(
 	const layoutTabs = (transition: boolean) => {
 		const height = getTabHeight();
 		const width = getRootWidth();
+		const tabPadding = getTabPadding();
+		console.log(height, width, tabPadding);
 
 		reorderTabs();
 
@@ -166,11 +185,11 @@ export function Sidebar(
 				transitioningTabs++;
 				movedTabs++;
 			}
-			dragpos = Math.max(dragpos, tab.dragpos + height + TAB_PADDING);
+			dragpos = Math.max(dragpos, tab.dragpos + height + tabPadding);
 
 			tab.pos = tabPos;
 			tab.height = height;
-			currpos += height + TAB_PADDING;
+			currpos += height + tabPadding;
 			staggerIndex++;
 		}
 
@@ -307,11 +326,8 @@ export function Sidebar(
 
 		// Both sidebar layouts render pinned tabs in the Arc-style grid
 		// (VerticalPinList) instead of the linear list, so skip them here.
-		// `visibleIndex` tracks the slot of the listed tabs for the initial
-		// transition origin.
 		const usesPinnedGrid =
 			this.layout === "vertical" || this.layout === "hybrid";
-		let visibleIndex = 0;
 		for (let index = 0; index < this.tabs.length; index++) {
 			let tab = this.tabs[index];
 
@@ -336,6 +352,18 @@ export function Sidebar(
 						transitionend={transitionend}
 					/>
 				);
+				const tabHeight = getTabHeight();
+				const previousTab = newvisualtabs[newvisualtabs.length - 1];
+				const nextTab = this.visualtabs.find(
+					(candidate) =>
+						!candidate.closing && !newvisualtabs.includes(candidate)
+				);
+				const initialPos = previousTab
+					? previousTab.pos + previousTab.height + getTabPadding()
+					: (nextTab?.pos ?? getLayoutStart());
+
+				// Absolute-positioned tabs need their slot before the mount animation runs.
+				dt.style.transform = `translateY(${initialPos}px)`;
 				visualtab = {
 					tab,
 					root: dt,
@@ -343,13 +371,12 @@ export function Sidebar(
 					dragpos: -1,
 					startdragpos: -1,
 					closing: false,
-					height: 0,
-					pos: getLayoutStart() + visibleIndex * (getTabHeight() + TAB_PADDING),
+					height: tabHeight,
+					pos: initialPos,
 				};
 			}
 
 			newvisualtabs.push(visualtab);
-			visibleIndex++;
 		}
 
 		for (let vtab of this.visualtabs) {
@@ -383,6 +410,12 @@ export function Sidebar(
 
 		this.visualtabs = newvisualtabs;
 		setTimeout(() => layoutTabs(true), 10);
+	});
+
+	// force sync when density profile changes
+	use(settingsService.settings.uiProfile).listen(() => {
+		this.tabs = [...this.tabs];
+		layoutTabs(true);
 	});
 
 	this.cx.mount = () => {
@@ -420,6 +453,10 @@ export function Sidebar(
 		<div
 			id="tabstrip"
 			this={use(this.container)}
+			on:auxclick={createMiddleClickCloseHandler(
+				() => this.visualtabs,
+				(tab) => this.destroyTab(tab)
+			)}
 			style={use(this.sidebarWidth).map(
 				(width) =>
 					`--sidebar-width: ${width}px; min-width: ${width}px; flex: 0 0 ${width}px;`
@@ -451,7 +488,7 @@ Sidebar.style = css`
 		--sidebar-width: 250px;
 		display: block;
 		position: relative;
-		padding: var(--tab-padding) 8px;
+		padding: var(--space-md);
 		background: var(--frame);
 		height: 100%;
 		z-index: 2;
@@ -478,12 +515,12 @@ Sidebar.style = css`
 
 	.top,
 	.bottom {
-		padding: 0 8px;
-		padding-top: 8px;
+		padding-inline: var(--space-md);
+		padding-top: var(--space-md);
 		flex-direction: column;
 		align-items: stretch;
 		justify-content: flex-start;
-		gap: 8px;
+		gap: var(--space-md);
 	}
 
 	.top {
@@ -506,15 +543,19 @@ Sidebar.style = css`
 
 	.new-tab {
 		border: none;
-		background: var(--toolbar);
 		color: var(--toolbar_text);
-		border-radius: var(--radius);
+		border-radius: var(--radius-md);
 		height: var(--tab-height);
-		width: calc(100% - 16px);
+		width: calc(100% - calc(var(--space-md) * 2));
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		margin-top: var(--space-xs);
+	}
+
+	.new-tab:is(:hover, :active, :focus) {
+		background: var(--toolbar);
 	}
 
 	.sidebar-resizer {
@@ -766,8 +807,11 @@ export function VerticalPinList(
 VerticalPinList.style = css`
 	:scope {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
-		gap: 6px;
+		grid-template-columns: repeat(
+			auto-fit,
+			minmax(calc(var(--omnibar-height) + var(--space-xs)), 1fr)
+		);
+		gap: var(--space-sm);
 	}
 
 	:scope.empty {

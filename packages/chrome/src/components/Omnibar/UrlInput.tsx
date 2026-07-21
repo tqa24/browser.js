@@ -7,6 +7,8 @@ import { splitUrl } from "../../util";
 import { INTERNAL_URL_PROTOCOL } from "../../consts";
 import { OmnibarButton } from "@components/Omnibar/OmnibarButton";
 import { BookmarkButton } from "@components/Omnibar/BookmarkButton";
+import { AVAILABLE_SEARCH_ENGINES } from "@components/Omnibar/suggestions";
+import { settingsService } from "../..";
 
 export function UrlInput(
 	this: FC<{
@@ -108,7 +110,13 @@ export function UrlInput(
 						!value && !active && url.href == `${INTERNAL_URL_PROTOCOL}//newtab`
 				)
 				.and(
-					<span class="placeholder">Search with Google or enter address</span>
+					<span class="placeholder">
+						Search with{" "}
+						{use(settingsService.settings.defaultSearchEngine).map(
+							(e) => AVAILABLE_SEARCH_ENGINES[e].name
+						)}{" "}
+						or enter address
+					</span>
 				)}
 
 			{use(this.active).or(
@@ -135,8 +143,7 @@ UrlInput.style = css`
 		display: flex;
 		z-index: 1;
 		align-items: center;
-		padding-left: 0.25em;
-		padding-right: 0.25em;
+		padding-inline: var(--space-xs);
 	}
 
 	:global(.ui-compact) :scope :is(.inactiveurl, .placeholder, input) {
@@ -180,13 +187,12 @@ UrlInput.style = css`
 		font-size: 1.15em;
 		color: var(--toolbar_text);
 		display: flex;
-		margin: 0.25em;
+		margin: var(--space-sm);
 
 		align-self: stretch;
 		align-items: center;
 	}
 	.active .lefticon {
-		margin-right: 0.5em;
-		margin-left: 0.5em;
+		margin-inline: var(--space-md);
 	}
 `;
