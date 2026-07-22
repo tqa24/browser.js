@@ -305,6 +305,9 @@ importers:
         specifier: ^3.1.0
         version: 3.1.1(vite@7.1.12(@types/node@26.1.1)(jiti@2.6.1)(lightningcss@1.32.0)(terser@5.43.1)(yaml@2.8.1))
     devDependencies:
+      '@mercuryworkshop/epoxy-tls':
+        specifier: 3.0.0-alpha.1
+        version: 3.0.0-alpha.1
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
@@ -1679,6 +1682,9 @@ packages:
 
   '@mercuryworkshop/epoxy-tls@2.1.19-1':
     resolution: {integrity: sha512-lF3WVDmKDWfClgFaDm1OAGI6PStcUUKUjNh2AJbfmLXEGh+dT4nvsuTY2QGRImnajCboIRyrpx9eGNY0egZSVg==}
+
+  '@mercuryworkshop/epoxy-tls@3.0.0-alpha.1':
+    resolution: {integrity: sha512-lq361JsKjykdDrMCTLYsZhpUtGRHhvnJiC59x7MNxVMvW0xRW//LkfTEjW3mg3YQT7WJ7gIxCKl0zFNudetWvQ==}
 
   '@mercuryworkshop/epoxy-transport@3.0.1':
     resolution: {integrity: sha512-8YzL73WaXZJLBRydmmY6NNPt5leB8ygBYuqgLn4+pGQ+wgi+JUC7ZdBQrA86TR6Oue3twbdfDvLRp48bzZ7DSw==}
@@ -7555,6 +7561,10 @@ snapshots:
       - supports-color
 
   '@mercuryworkshop/epoxy-tls@2.1.19-1': {}
+
+  '@mercuryworkshop/epoxy-tls@3.0.0-alpha.1':
+    dependencies:
+      magic-string: 0.30.21
 
   '@mercuryworkshop/epoxy-transport@3.0.1':
     dependencies:
