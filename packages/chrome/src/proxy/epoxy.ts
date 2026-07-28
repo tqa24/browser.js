@@ -5,8 +5,18 @@ import type {
 } from "@mercuryworkshop/proxy-transports";
 import type {
 	EpoxyClient,
-	EpoxyHandlers,
+	EpoxyWS,
+	EpoxyWSCloseInfo,
 } from "@mercuryworkshop/epoxy-tls/full/bundled";
+
+function toArrayBuffer(chunk: Uint8Array): ArrayBuffer {
+	if (chunk.byteOffset === 0 && chunk.byteLength === chunk.buffer.byteLength)
+		return chunk.buffer as ArrayBuffer;
+	return chunk.buffer.slice(
+		chunk.byteOffset,
+		chunk.byteOffset + chunk.byteLength
+	) as ArrayBuffer;
+}
 
 export default class EpoxyTransport implements ProxyTransport {
 	ready = false;
@@ -27,33 +37,21 @@ export default class EpoxyTransport implements ProxyTransport {
 		if (body instanceof Blob) body = await body.arrayBuffer();
 
 		try {
-			let headersObj: Record<string, string> = {};
-			for (let [key, value] of headers) {
-				if (headersObj[key]) {
-					// epoxy does not support multiple headers with the same key
-					console.warn(
-						`Duplicate header key "${key}" detected. Overwriting previous value.`
-					);
-				}
-				headersObj[key] = value;
-			}
-
 			let res = await this.client.fetch(remote.href, {
 				method,
 				body,
-				headers: headersObj,
+				headers,
 				redirect: "manual",
+				signal,
 			});
+
 			let headersEntries: RawHeaders = [];
-			for (let [key, value] of Object.entries((res as any).rawHeaders) as any) {
-				if (Array.isArray(value)) {
-					for (let v of value) {
-						headersEntries.push([key, v]);
-					}
-				} else {
+			for (let [key, values] of Object.entries(res.rawHeaders)) {
+				for (let value of values) {
 					headersEntries.push([key, value]);
 				}
 			}
+
 			return {
 				body: res.body!,
 				headers: headersEntries,
@@ -78,41 +76,73 @@ export default class EpoxyTransport implements ProxyTransport {
 		(data: Blob | ArrayBuffer | string) => void,
 		(code: number, reason: string) => void,
 	] {
-		let handlers = new EpoxyHandlers(
-			// epoxy does not support getting the server selected protocol/extension
-			() => onopen("", ""),
-			// epoxy does not support getting close code/reason
-			() => onclose(1000, "Closed by remote"),
-			onerror,
-			(data: Uint8Array | string) =>
-				//@ts-ignore
-				data instanceof Uint8Array ? onmessage(data.buffer) : onmessage(data)
-		);
-
-		let headersObj: Record<string, string> = {};
-		for (let [key, value] of requestHeaders) {
-			if (headersObj[key]) {
-				console.warn(
-					`Duplicate header key "${key}" detected. Overwriting previous value.`
-				);
-			}
-			headersObj[key] = value;
-		}
-
-		let ws = this.client.connect_websocket(
-			handlers,
-			url.href,
+		const ws = this.client.websocket(url.href, {
 			protocols,
-			headersObj
-		);
+			headers: requestHeaders,
+		});
+		const writer = ws.then((socket) => socket.writable.getWriter());
+		// failures are reported to onerror by the read loop below
+		writer.catch(() => {});
+
+		let settled = false;
+		const fail = (err: unknown) => {
+			if (settled) return;
+			settled = true;
+			onerror(String(err));
+		};
+		const finish = (info: EpoxyWSCloseInfo) => {
+			if (settled) return;
+			settled = true;
+			onclose(info.closeCode ?? 1000, info.reason ?? "");
+		};
+
+		(async () => {
+			let socket: EpoxyWS;
+			try {
+				socket = await ws;
+			} catch (err) {
+				fail(err);
+				return;
+			}
+
+			socket.closed.then(finish, fail);
+			onopen(
+				socket.protocol,
+				socket.headers.get("sec-websocket-extensions") || ""
+			);
+
+			const reader = socket.readable.getReader();
+			try {
+				while (true) {
+					// eslint-disable-next-line no-await-in-loop
+					const { done, value } = await reader.read();
+					if (done || value === undefined) break;
+					onmessage(typeof value === "string" ? value : toArrayBuffer(value));
+				}
+			} catch (err) {
+				fail(err);
+			} finally {
+				reader.releaseLock();
+			}
+		})();
 
 		return [
 			async (data) => {
-				if (data instanceof Blob) data = await data.arrayBuffer();
-				(await ws).send(data);
+				try {
+					if (data instanceof Blob) data = await data.arrayBuffer();
+					await (
+						await writer
+					).write(data instanceof ArrayBuffer ? new Uint8Array(data) : data);
+				} catch (err) {
+					fail(err);
+				}
 			},
 			async (code, reason) => {
-				(await ws).close(code, reason || "");
+				try {
+					(await ws).close({ closeCode: code, reason: reason || "" });
+				} catch (err) {
+					fail(err);
+				}
 			},
 		];
 	}
