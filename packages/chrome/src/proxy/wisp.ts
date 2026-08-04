@@ -18,6 +18,7 @@ import {
 	EpoxyClient,
 	init,
 } from "@mercuryworkshop/epoxy-tls/full/bundled";
+import { anonPeerToken } from "..";
 
 let useEpoxy = true;
 
@@ -30,7 +31,10 @@ export async function setWispUrl(wispurl: string) {
 	if (useEpoxy) {
 		await init();
 		const custom = new JsSocketProvider(async (host, port) => {
-			const socket = await puter.peer.connect(undefined, { port });
+			const socket = await puter.peer.connect(undefined, {
+				port,
+				anonToken: anonPeerToken,
+			});
 
 			await new Promise<void>((resolve, reject) => {
 				socket.addEventListener("open", () => {

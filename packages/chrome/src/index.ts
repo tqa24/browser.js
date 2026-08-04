@@ -20,6 +20,7 @@ import { mount } from "./App.tsx";
 
 export const isPuter =
 	import.meta.env.VITE_PUTER_BRANDING && puter.env == "app";
+export const needSignIn = isPuter && !import.meta.env.VITE_PUTER_WISP_PROMOTION;
 export const puterBranding = import.meta.env.VITE_PUTER_BRANDING;
 export const STORAGE_VERSION = 2;
 
@@ -30,15 +31,19 @@ export let downloadsService: DownloadsService;
 export let faviconService: FaviconService;
 
 if (import.meta.env.VITE_PUTER_BRANDING) {
-	if (!puter.auth.isSignedIn()) {
+	if (needSignIn && !puter.auth.isSignedIn()) {
 		await puter.auth.signIn();
 	}
 
-	let wisp = await puter.net.generateWispV1URL();
+	const wisp = await puter.net.generateWispV1URL();
 	setWispUrl(wisp);
 } else {
 	setWispUrl(import.meta.env.VITE_WISP_URL);
 }
+
+const loc = new URL(location.href);
+export const anonPeerToken = loc.searchParams.get("peerToken");
+export const openUrl = loc.searchParams.get("openUrl");
 
 await loadServices();
 

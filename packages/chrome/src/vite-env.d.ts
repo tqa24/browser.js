@@ -6,6 +6,7 @@ interface ImportMetaEnv {
 	readonly VITE_SENTRY_URL: string;
 	readonly VITE_ISOLATION_ORIGIN: string;
 	readonly VITE_WISP_URL: string;
+	readonly VITE_PUTER_WISP_PROMOTION: string;
 }
 
 interface ImportMeta {

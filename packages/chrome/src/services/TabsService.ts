@@ -4,7 +4,7 @@ import { Service } from "./Service.ts";
 import { INTERNAL_URL_PROTOCOL } from "../consts.ts";
 // TODO: centralize this to one place somehow
 import * as tldts from "tldts";
-import { isPuter } from "../index.ts";
+import { isPuter, openUrl } from "../index.ts";
 import { focusOmnibox } from "@components/Omnibar/Omnibox.tsx";
 import { uuid } from "../util";
 import { mountedPromise } from "../App.tsx";
@@ -42,6 +42,22 @@ export class TabsService extends Service {
 			mountedPromise.then(() => {
 				pushTab(tab);
 			});
+		}
+
+		if (isPuter) {
+			if (
+				openUrl &&
+				URL.canParse(openUrl) &&
+				document.referrer === "developer.puter.com"
+			) {
+				const url = new URL(openUrl);
+				const foundTab = this.tabs.find((tab) => tab.url.href === url.href);
+				if (foundTab) {
+					this.activetab = foundTab;
+				} else {
+					this.newTab(url);
+				}
+			}
 		}
 	}
 
