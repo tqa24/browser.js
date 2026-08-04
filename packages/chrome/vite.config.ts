@@ -31,6 +31,27 @@ export default defineConfig({
 	],
 	define: {
 		__COPYRIGHT_YEAR__: JSON.stringify(new Date().getFullYear()),
+		__DEFAULT_SETTINGS__: {
+			appearance: "system",
+			tabLayout: "horizontal",
+			verticalTabJustify: "left",
+			sidebarWidth: null,
+			uiProfile: "default",
+			themeId: "dark",
+			roundness: "balanced",
+			tabStyle: "floating",
+			iconSet: "ionicons",
+			animations: "bouncy",
+			startupPage: "continue",
+			defaultZoom: 100,
+			showBookmarksBar: false,
+			defaultSearchEngine: "google",
+			searchSuggestionsEnabled: true,
+			blockTrackers: true,
+			clearHistoryOnExit: false,
+			doNotTrack: true,
+			extensionsDevMode: false,
+		},
 	},
 	resolve: {
 		alias: {

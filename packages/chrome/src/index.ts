@@ -22,7 +22,7 @@ export const isPuter =
 	import.meta.env.VITE_PUTER_BRANDING && puter.env == "app";
 export const needSignIn = isPuter && !import.meta.env.VITE_PUTER_WISP_PROMOTION;
 export const puterBranding = import.meta.env.VITE_PUTER_BRANDING;
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 3;
 
 export let profileService: ProfileService;
 export let settingsService: SettingsService;
@@ -115,8 +115,9 @@ async function loadServices() {
 			}
 		}
 		await kv.set("version", STORAGE_VERSION);
-
-		settingsService = new SettingsService(await kv.get("settings"));
+		settingsService = new SettingsService(
+			skipLoad ? null : await kv.get("settings")
+		);
 		registerSave(settingsService, kv, "settings");
 		faviconService = new FaviconService(await kv.get("faviconCache"));
 		registerSave(faviconService, kv, "faviconCache");

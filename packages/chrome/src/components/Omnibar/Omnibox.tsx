@@ -30,6 +30,12 @@ InactiveBar.style = css`
 		margin: 0.25em;
 	}
 
+	/* At the roundest end of the scale the address bar goes fully pill-shaped,
+	   as Chromium's omnibox does. */
+	:global(.roundness-round *) > :scope {
+		border-radius: 9999px;
+	}
+
 	:scope.subtle.active {
 		border: 1px solid var(--tab_line);
 	}
@@ -393,7 +399,7 @@ Omnibox.style = css`
 		display: flex;
 		height: 100%;
 		overflow: visible;
-		transition: width 150ms cubic-bezier(0,1.33,.5,1);
+		transition: width 150ms var(--ease-omnibox);
 	}
 
 	:scope.vertical-layout {

@@ -12,6 +12,7 @@ import {
 } from "../../icons";
 import { Icon } from "@components/Icon";
 import { tabsService } from "../..";
+import { easing } from "../../easing";
 
 type VisualTab = {
 	tab: Tab;
@@ -200,7 +201,7 @@ export function DragTab(
 					],
 					{
 						duration: 200,
-						easing: "cubic-bezier(.25,.5,0,1.15)",
+						easing: easing("--ease-tab-open"),
 						fill: "forwards",
 					}
 				);
@@ -224,7 +225,7 @@ export function DragTab(
 				],
 				{
 					duration: 200,
-					easing: "cubic-bezier(.25,.5,0,1.15)",
+					easing: easing("--ease-tab-open"),
 					fill: "forwards",
 				}
 			);
@@ -309,6 +310,13 @@ export function DragTab(
 						</>
 					)}
 				</div>
+				{/* Bottom bar + curved "feet" of the attached tab shape. Inert
+				    (display: none) unless the `attached` tab style is active. */}
+				{use(this.active).and(
+					<div class="belowcontainer">
+						<div class="below"></div>
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -320,9 +328,15 @@ DragTab.style = css`
 		user-select: none;
 		position: absolute;
 
-		--tab-active-border-width: 11px;
-		--tab-active-border-radius: 10px;
-		--tab-active-border-radius-neg: -10px;
+		--tab-active-border-width: calc(var(--radius-lg) + 1px);
+		--tab-active-border-radius: var(--radius-lg);
+		--tab-active-border-radius-neg: calc(-1 * var(--radius-lg));
+		/* Top corners of an attached tab. An attached tab spends the strip's
+		   bottom padding on its feet, so that comes off the radius to keep the
+		   visible corner in proportion with the rest of the roundness scale.
+		   Clamped at zero for the sharp scale, where the padding is larger than
+		   the radius and a negative value would void the declaration. */
+		--tab-top-border-radius: max(0px, calc(var(--radius-xl) - var(--space-sm)));
 
 		--tab-selected-textcolor: var(--toolbar_text);
 	}
@@ -403,7 +417,7 @@ DragTab.style = css`
 
 	:scope:has(.hover-area:hover) .main:not(.active),
 	:scope:has(.close:hover) .main:not(.active) {
-		transition: background 250ms;
+		transition: background 250ms var(--ease-hover);
 		background-color: color-mix(in srgb, currentColor 7%, transparent);
 		/*background: var(--background_tab);*/
 		/*color: var(-);*/
@@ -418,13 +432,33 @@ DragTab.style = css`
 		outline-offset: -1px;
 	}
 
+	/* --- Attached tab shaping (tabStyle: "attached") -----------------------
+	   Ported from aboutbrowser-v2 (src/components/tabs.tsx).
+
+	   The trapezoid is built from two pieces rather than an SVG:
+	     - .main gets rounded top corners and square bottom corners, so it reads
+	       as the body of the tab.
+	     - .belowcontainer is a zero-height anchor immediately after .main;
+	       .below hangs out of it to fill the tab strip's bottom padding with
+	       the toolbar color, fusing the active tab into the toolbar below it.
+	       Its ::before/::after are toolbar-colored blocks sitting just outside
+	       each bottom corner, with a radial-gradient mask carving a transparent
+	       circle out of their inner top corner. What's left is the concave
+	       curve that flares away from the tab.
+
+	   .below's height must match the strip's bottom padding (--space-sm in
+	   TabStrip.style) or the tab won't reach the toolbar.
+
+	   Scoped to the horizontal strip: the bottom/compact/vertical layouts have
+	   no toolbar directly beneath the tabs for the shape to merge into. */
 	.belowcontainer {
 		position: relative;
+		display: none;
 	}
 	.below {
 		position: absolute;
-		bottom: -6px;
-		height: 6px;
+		bottom: calc(-1 * var(--space-sm));
+		height: var(--space-sm);
 		width: 100%;
 
 		background: var(--toolbar);
@@ -440,6 +474,50 @@ DragTab.style = css`
 		height: var(--tab-active-border-radius);
 
 		background: var(--toolbar);
+	}
+
+	.below::before {
+		left: var(--tab-active-border-radius-neg);
+		mask-image: radial-gradient(
+			circle at 0 0,
+			transparent var(--tab-active-border-radius),
+			black 0
+		);
+	}
+
+	.below::after {
+		right: var(--tab-active-border-radius-neg);
+		mask-image: radial-gradient(
+			circle at var(--tab-active-border-width) 0,
+			transparent var(--tab-active-border-radius),
+			black 0
+		);
+	}
+
+	:global(.tabs-attached.layout-horizontal) :scope .belowcontainer {
+		display: block;
+	}
+
+	:global(.tabs-attached.layout-horizontal) :scope .main {
+		border-radius: var(--tab-top-border-radius);
+		padding: var(--space-sm) var(--space-lg);
+	}
+
+	:global(.tabs-attached.layout-horizontal) :scope .main.active {
+		border-radius: var(--tab-top-border-radius) var(--tab-top-border-radius) 0 0;
+	}
+
+	/* An attached tab is contiguous with the toolbar, so the lift the floating
+	   style gets from a shadow and a hairline outline would just draw a seam. */
+	:global(.tabs-attached) :scope .main.active {
+		box-shadow: none;
+		outline: none;
+	}
+
+	/* The compact layout has no strip for a tab to attach to — tabs sit inline
+	   with the omnibar — so the active tab is distinguished by fill instead. */
+	:global(.tabs-attached.layout-compact) :scope .main.active {
+		background: var(--toolbar_field);
 	}
 `;
 
@@ -504,7 +582,7 @@ VerticalPinTile.style = css`
 		cursor: pointer;
 		user-select: none;
 		position: relative;
-		transition: background 150ms;
+		transition: background 150ms var(--ease-hover);
 		height: var(--omnibar-height);
 		outline: 1px solid var(--popup_border);
 		outline-offset: -1px;

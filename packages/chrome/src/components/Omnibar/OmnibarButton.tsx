@@ -1,10 +1,10 @@
-import type { IconifyIcon } from "@iconify/types";
 import { css, type FC } from "dreamland/core";
 import { Icon } from "@components/Icon";
+import type { IconDescription } from "../../icons";
 
 export function OmnibarButton(
 	this: FC<{
-		icon: IconifyIcon;
+		icon: IconDescription;
 		click?: (e: MouseEvent) => void;
 		rightclick?: (e: MouseEvent) => void;
 		active?: boolean;
@@ -38,6 +38,10 @@ OmnibarButton.style = css`
 		border-radius: var(--radius-md);
 
 		opacity: 0.4;
+	}
+	/* Circular hit target at the roundest end of the scale, as in Chromium. */
+	:global(.roundness-round *) > :scope {
+		border-radius: 50%;
 	}
 	:scope.active:hover {
 		background: var(--toolbarbutton-hover-background);

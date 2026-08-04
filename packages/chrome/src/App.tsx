@@ -6,6 +6,8 @@ import { Tab } from "./Tab/Tab";
 import { BookmarksStrip } from "@components/BookmarksStrip";
 import { Omnibar } from "@components/Omnibar/Omnibar";
 import { getTheme } from "./themes";
+import { setIconSet } from "./icons";
+import { TWEAKS, TWEAK_KEYS, tweakClass } from "./tweaks";
 import { contexts } from "./proxy/scramjet";
 import { INTERNAL_URL_PROTOCOL } from "./consts";
 import { Shell } from "@components/Shell";
@@ -71,8 +73,32 @@ export function App(
 
 	applyProfile();
 
+	// Style tweaks ("Tweaks" in settings): the shape, motion and iconography of
+	// UI elements, independent of the colors. Each axis contributes exactly one
+	// body class, `<slug>-<value>`, which style.css and the component
+	// stylesheets key off; see tweaks.ts. Icons are the one axis CSS can't
+	// express, so it's pushed into icons.ts instead.
+	const applyTweaks = () => {
+		for (const key of TWEAK_KEYS) {
+			const active = settingsService.settings[key];
+			for (const option of TWEAKS[key].options) {
+				document.body.classList.toggle(
+					tweakClass(key, option.id),
+					option.id === active
+				);
+			}
+		}
+		setIconSet(settingsService.settings.iconSet);
+	};
+
+	applyTweaks();
+
 	const applyLayout = () => {
 		const layout = settingsService.settings.tabLayout;
+		document.body.classList.toggle(
+			"layout-horizontal",
+			layout === "horizontal"
+		);
 		document.body.classList.toggle("layout-bottom", layout === "bottom");
 		document.body.classList.toggle("layout-compact", layout === "compact");
 		const verticalTabs = layout === "hybrid" || layout === "vertical";
@@ -103,6 +129,10 @@ export function App(
 	use(settingsService.settings.themeId).listen(applyTheme);
 
 	use(settingsService.settings.uiProfile).listen(applyProfile);
+	use(settingsService.settings.roundness).listen(applyTweaks);
+	use(settingsService.settings.tabStyle).listen(applyTweaks);
+	use(settingsService.settings.iconSet).listen(applyTweaks);
+	use(settingsService.settings.animations).listen(applyTweaks);
 	use(settingsService.settings.tabLayout).listen(applyLayout);
 	use(settingsService.settings.verticalTabJustify).listen(applyLayout);
 

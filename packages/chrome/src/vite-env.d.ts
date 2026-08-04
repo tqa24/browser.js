@@ -14,3 +14,7 @@ interface ImportMeta {
 }
 
 declare const puter: any;
+
+/** Inlined by vite.config.ts's `define`. */
+declare const __COPYRIGHT_YEAR__: number;
+declare const __DEFAULT_SETTINGS__: import("./services/SettingsService").Settings;
