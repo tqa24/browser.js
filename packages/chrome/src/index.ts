@@ -35,8 +35,12 @@ if (import.meta.env.VITE_PUTER_BRANDING) {
 		await puter.auth.signIn();
 	}
 
-	const wisp = await puter.net.generateWispV1URL();
-	setWispUrl(wisp);
+	if (needSignIn) {
+		const wisp = await puter.net.generateWispV1URL();
+		setWispUrl(wisp);
+	} else {
+		setWispUrl(await fetch("https://sensible-ship-8305.puter.work/").then(r => r.text()));
+	}
 } else {
 	setWispUrl(import.meta.env.VITE_WISP_URL);
 }
@@ -91,7 +95,7 @@ function registerSave(service: Service, kv: KVWrapper, key: string) {
 
 async function loadServices() {
 	await navigator.locks.request("write", async () => {
-		let kv = new KVWrapper(puterBranding ? "puter" : "localstorage");
+		let kv = new KVWrapper((puterBranding && needSignIn) ? "puter" : "localstorage");
 		let version;
 		let skipLoad = false;
 		if (await kv.has("version")) {
