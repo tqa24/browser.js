@@ -1,0 +1,78 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "CI run ID to deploy (defaults to the last successful CI run on main)"
+        required: false
+        type: string
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  pages:
+    name: Upload to Github Pages
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Find run to deploy
+        id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          INPUT_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+
+          if [ -n "$INPUT_RUN_ID" ]; then
+            echo "run_id=$INPUT_RUN_ID" >> "$GITHUB_OUTPUT"
+            echo "Using explicitly requested run $INPUT_RUN_ID"
+            exit 0
+          fi
+
+          # walk back through recent successful CI runs on main until we find one
+          # whose frontend artifact hasn't expired yet
+          runs=$(gh run list --workflow=main.yml --branch=main --status=success \
+            --limit 20 --json databaseId --jq '.[].databaseId')
+
+          for run in $runs; do
+            if gh api "repos/$GH_REPO/actions/runs/$run/artifacts" \
+              --jq '.artifacts[] | select(.name == "frontend" and .expired == false) | .name' \
+              | grep -q frontend; then
+              echo "run_id=$run" >> "$GITHUB_OUTPUT"
+              echo "Deploying artifact from run $run"
+              exit 0
+            fi
+            echo "Run $run has no usable frontend artifact, trying older run"
+          done
+
+          echo "::error::No successful CI run on main has an unexpired frontend artifact"
+          exit 1
+
+      - name: Get artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend
+          path: .
+          run-id: ${{ steps.find.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to github
+        id: deployment
+        uses: actions/deploy-pages@v4
