@@ -4,7 +4,7 @@ import { Service } from "./Service.ts";
 import { INTERNAL_URL_PROTOCOL } from "../consts.ts";
 // TODO: centralize this to one place somehow
 import * as tldts from "tldts";
-import { isPuter, openUrl } from "../index.ts";
+import { puterBranding, isPuter, openUrl } from "../index.ts";
 import { focusOmnibox } from "@components/Omnibar/Omnibox.tsx";
 import { uuid } from "../util";
 import { mountedPromise } from "../App.tsx";
@@ -44,7 +44,7 @@ export class TabsService extends Service {
 			});
 		}
 
-		if (isPuter) {
+		if (puterBranding) {
 			if (
 				openUrl &&
 				URL.canParse(openUrl) &&
