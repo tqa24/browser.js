@@ -47,7 +47,7 @@ if (import.meta.env.VITE_PUTER_BRANDING) {
 
 const loc = new URL(location.href);
 export const anonPeerToken = loc.searchParams.get("peerToken");
-export const openUrl = loc.searchParams.get("openUrl");
+export const openUrl = decodeURIComponent(loc.searchParams.get("openUrl") || "");
 
 await loadServices();
 
