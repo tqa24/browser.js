@@ -55,7 +55,9 @@ export class TabsService extends Service {
 				if (foundTab) {
 					this.activetab = foundTab;
 				} else {
-					this.newTab(url);
+					mountedPromise.then(() => {
+						this.newTab(url);
+					});
 				}
 			}
 		}
