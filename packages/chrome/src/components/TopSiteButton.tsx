@@ -125,6 +125,10 @@ TopSiteButton.style = css`
 			border-color 120ms ease-out;
 	}
 
+	:global(.roundness-round *) > :scope .tile {
+		border-radius: 50%;
+	}
+
 	:scope:is(:hover, :focus-within) .tile {
 		background: color-mix(in srgb, var(--toolbar_field) 82%, var(--text-8));
 		border-color: var(--ntp-text-20);
@@ -160,6 +164,12 @@ TopSiteButton.style = css`
 		width: 100%;
 		height: 100%;
 		object-fit: cover;
+	}
+
+	:global(.roundness-round *) > :scope .icon-wrapper {
+		transform: scale(66%);
+		border-radius: 0;
+		background: transparent;
 	}
 
 	.fallback {

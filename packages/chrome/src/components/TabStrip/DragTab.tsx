@@ -349,6 +349,14 @@ DragTab.style = css`
 		anchor-name: --hovered-tab;
 	}
 
+	:global(.tabs-attached.roundness-round *) > :scope .close:hover::before {
+		border-radius: 99px;
+		width: 17px;
+		height: 17px;
+		top: -2px;
+		left: -2px;
+	}
+
 	.hover-area {
 		position: absolute;
 		inset: calc(-1 * var(--space-xs));
@@ -412,7 +420,7 @@ DragTab.style = css`
 		height: 21px;
 		top: -4px;
 		left: -4px;
-		border-radius: 3px;
+		border-radius: var(--radius-xs);
 	}
 
 	:scope:has(.hover-area:hover) .main:not(.active),
@@ -500,7 +508,7 @@ DragTab.style = css`
 
 	:global(.tabs-attached.layout-horizontal) :scope .main {
 		border-radius: var(--tab-top-border-radius);
-		padding: var(--space-sm) var(--space-lg);
+		padding: var(--space-sm) var(--space-md);
 	}
 
 	:global(.tabs-attached.layout-horizontal) :scope .main.active {

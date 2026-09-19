@@ -241,6 +241,10 @@ NewTabPage.style = css`
 		margin: 0;
 	}
 
+	:global(.roundness-round *) > :scope .tile {
+		border-radius: 50%;
+	}
+
 	@media (max-width: 720px) {
 		:scope {
 			padding-top: 1.25rem;
