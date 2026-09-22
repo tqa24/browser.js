@@ -45,7 +45,7 @@ export default defineConfig({
 			startupPage: "continue",
 			defaultZoom: 100,
 			showBookmarksBar: false,
-			defaultSearchEngine: "google",
+			defaultSearchEngine: "duckduckgo",
 			searchSuggestionsEnabled: true,
 			blockTrackers: true,
 			clearHistoryOnExit: false,
