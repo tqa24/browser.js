@@ -1417,18 +1417,6 @@ SettingsPage.style = css`
 		width: 100%;
 		height: 100%;
 		display: flex;
-		font-family:
-			system-ui,
-			-apple-system,
-			BlinkMacSystemFont,
-			"Segoe UI",
-			Roboto,
-			Oxygen,
-			Ubuntu,
-			Cantarell,
-			"Open Sans",
-			"Helvetica Neue",
-			sans-serif;
 		background: var(--ntp_background);
 		color: var(--ntp_text);
 		overflow: hidden;
