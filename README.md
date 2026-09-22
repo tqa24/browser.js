@@ -3,14 +3,10 @@
 <h3 align="center">Highly Configurable Browser Environment for the Web</h3>
 
 <p align="center">
-    <a href="https://puter.com/app/browser"><strong>« LIVE DEMO »</strong></a>
+    <a href="https://browser.puter.com/"><strong>« LIVE DEMO »</strong></a>
     <br />
     <br />
     <a href="https://puter.com">Puter.com</a>
-    ·
-    <a href="https://discord.com/invite/PQcx7Teh8u">Discord</a>
-    ·
-    <a href="https://reddit.com/r/puter">Reddit</a>
     ·
     <a href="https://twitter.com/HeyPuter">X</a>
 </p>
@@ -42,9 +38,7 @@ See [CONTRIBUTING.md](/CONTRIBUTING.md) for build instructions
 Connect with the maintainers and community through these channels:
 
 - Bug report or feature request? Please [open an issue](https://github.com/HeyPuter/browser.js/issues/new/choose).
-- Discord: [discord.com/invite/PQcx7Teh8u](https://discord.com/invite/PQcx7Teh8u)
 - X (Twitter): [x.com/HeyPuter](https://x.com/HeyPuter)
-- Reddit: [reddit.com/r/puter/](https://www.reddit.com/r/puter/)
 - Mastodon: [mastodon.social/@puter](https://mastodon.social/@puter)
 - Security issues? [security@puter.com](mailto:security@puter.com)
 - Email maintainers at [hi@puter.com](mailto:hi@puter.com)
