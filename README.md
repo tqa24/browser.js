@@ -6,9 +6,11 @@
     <a href="https://browser.puter.com/"><strong>« LIVE DEMO »</strong></a>
     <br />
     <br />
+    <a href="https://browser.puter.com/">Official Site</a>
+    ·
     <a href="https://puter.com">Puter.com</a>
     ·
-    <a href="https://twitter.com/HeyPuter">X</a>
+    <a href="https://x.com/HeyPuter">X</a>
 </p>
 <h3 align="center"><img style="border-radius:5px;" alt="screenshot" src="./assets/screenshot.png"></h3>
 
