@@ -130,7 +130,7 @@ export function Menu(
 		this.root.addEventListener("mousedown", (e) => {
 			e.stopPropagation();
 		});
-		(this.items ? (menuItems()[0] ?? this.root) : this.root).focus({
+		this.root.focus({
 			preventScroll: true,
 		});
 	};
@@ -224,13 +224,15 @@ export function Menu(
 									e.stopPropagation();
 								}}
 							>
-								{item.image ? (
-									<img src={item.image}></img>
-								) : item.icon ? (
-									<Icon icon={item.icon}></Icon>
-								) : (
-									<div class="pad" />
-								)}
+								<span class="menuitem-icon">
+									{item.image ? (
+										<img src={item.image}></img>
+									) : item.icon ? (
+										<Icon icon={item.icon}></Icon>
+									) : (
+										<div class="pad" />
+									)}
+								</span>
 								<span>{item.label}</span>
 							</button>
 						)
@@ -251,8 +253,12 @@ Menu.style = css`
 		z-index: 1000;
 		display: flex;
 		flex-direction: column;
-		min-width: 15em;
+		min-width: 17em;
 		overflow: hidden;
+
+		font-size: 0.95rem;
+
+		padding-block: var(--space-sm);
 
 		transition:
 			opacity 0.1s ease,
@@ -260,9 +266,12 @@ Menu.style = css`
 		opacity: 1;
 		transform: scaleX(100%) scaleY(100%);
 		transform-origin: var(--transform-origin-x) var(--transform-origin-y);
+		outline: none;
 	}
+
 	.separator {
 		border-top: 1px solid var(--text-20);
+		margin-block: var(--space-sm);
 	}
 	:scope.closing {
 		transform: scaleX(95%) scaleY(87%);
@@ -272,18 +281,25 @@ Menu.style = css`
 		background: none;
 		border: none;
 		font-size: 0.8em;
-		padding: var(--space-lg) var(--space-xxl);
+		padding: calc(var(--space-md) * 0.83) var(--space-xl);
 		text-align: left;
 		color: var(--toolbar_text);
 
 		display: flex;
 		align-items: center;
-		gap: var(--space-xl);
+		gap: var(--space-md);
+	}
+
+	.menuitem-icon {
+		font-size: 0.9rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	img {
-		width: 16px;
-		height: 16px;
+		width: 1em;
+		height: 1em;
 	}
 
 	.pad {
@@ -303,6 +319,7 @@ Menu.style = css`
 	.item:focus-visible,
 	.item:has(input:focus-visible) {
 		background: var(--text-10);
+		outline: none;
 	}
 	.item:disabled,
 	.item:has(input:disabled) {

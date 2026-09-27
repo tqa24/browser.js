@@ -9,6 +9,7 @@ import {
 	iconTrash,
 	iconCloseCircle,
 	iconGlobe,
+	iconPin,
 } from "../../icons";
 import { Icon } from "@components/Icon";
 import { tabsService } from "../..";
@@ -186,6 +187,7 @@ function buildTabContextMenu(tab: Tab, destroy: () => void) {
 		},
 		{
 			label: tab.pinned ? "Unpin" : "Pin",
+			icon: iconPin,
 			action: () => {
 				if (tab.pinned) {
 					tabsService.unpinTab(tab);

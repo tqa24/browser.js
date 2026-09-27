@@ -43,6 +43,7 @@ import ionEarth from "@ktibow/iconset-ion/earth-outline";
 import ionServer from "@ktibow/iconset-ion/server-outline";
 import ionDesktop from "@ktibow/iconset-ion/desktop-outline";
 import ionCloud from "@ktibow/iconset-ion/cloud-outline";
+import ionPinOutline from "@ktibow/iconset-ion/pin-outline";
 
 // Material Symbols
 import msBack from "@ktibow/iconset-material-symbols/arrow-back-rounded";
@@ -82,6 +83,7 @@ import msEarth from "@ktibow/iconset-material-symbols/public";
 import msServer from "@ktibow/iconset-material-symbols/dns-outline";
 import msDesktop from "@ktibow/iconset-material-symbols/desktop-windows-outline-rounded";
 import msCloud from "@ktibow/iconset-material-symbols/cloud-outline";
+import msKeep from "@ktibow/iconset-material-symbols/keep-outline-rounded";
 
 const set = createState<{ current: IconSet }>({ current: "ionicons" });
 export function setIconSet(next: IconSet) {
@@ -159,6 +161,8 @@ export const iconEarth = icon(ionEarth, msEarth);
 export const iconServer = icon(ionServer, msServer);
 export const iconDesktop = icon(ionDesktop, msDesktop);
 export const iconCloud = icon(ionCloud, msCloud);
+
+export const iconPin = icon(ionPinOutline, msKeep);
 
 // Aliases used elsewhere in the codebase. These deliberately share identity
 // with the icon they alias.
