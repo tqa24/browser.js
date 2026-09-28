@@ -7,7 +7,6 @@ import {
 	iconDesktop,
 	iconAbout,
 	iconLink,
-	iconCloud,
 } from "../../icons";
 import { Icon } from "@components/Icon";
 import { Favicon } from "@components/Favicon";
@@ -78,6 +77,8 @@ export function Suggestion(
 				class="result-content"
 				class:single={
 					item.kind === "directsearch" ||
+					item.kind === "search" ||
+					item.kind === "trending" ||
 					item.title == null ||
 					item.title === "" ||
 					item.title === trimUrl(item.url)
@@ -86,7 +87,9 @@ export function Suggestion(
 				{item.kind !== "directsearch"
 					? (item.title && (
 							<span class="description">
-								{renderResultHighlight(item.title, this.input.value)}
+								{item.kind === "trending"
+									? item.title
+									: renderResultHighlight(item.title, this.input.value)}
 							</span>
 						)) || <span class="description">{trimUrl(item.url)}</span>
 					: null}
@@ -142,8 +145,19 @@ Suggestion.style = css`
 		min-width: 0;
 		gap: 2px;
 	}
+
 	.result-content.single {
 		display: block;
+	}
+
+	.result-content.single .description {
+		display: block;
+	}
+
+	.result-icon {
+		display: flex;
+		flex-shrink: 0;
+		align-items: center;
 	}
 
 	.url,

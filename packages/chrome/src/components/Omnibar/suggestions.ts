@@ -225,13 +225,7 @@ export type TrendingQuery = {
 
 export let trendingCached: TrendingQuery[] | null = null;
 export async function fetchGoogleTrending(geo = "US"): Promise<void> {
-	if (
-		!bare ||
-		!settingsService.settings.searchSuggestionsEnabled ||
-		settingsService.settings.defaultSearchEngine !== "google"
-	)
-		return;
-	// Trending is only available for Google.
+	if (!bare || !settingsService.settings.searchSuggestionsEnabled) return;
 	try {
 		if (trendingCached) return;
 
@@ -253,8 +247,10 @@ export async function fetchGoogleTrending(geo = "US"): Promise<void> {
 		const data = JSON.parse(json[0][2]);
 		const results: TrendingQuery[] = [];
 		for (const item of data[1]) {
+			const title = typeof item?.[0] === "string" ? item[0].trim() : "";
+			if (!title || results.some((result) => result.title === title)) continue;
 			results.push({
-				title: item[0],
+				title,
 				traffic: item[1],
 				url: item[2]
 					? `https://www.google.com/search?q=${encodeURIComponent(item[0])}`
@@ -266,4 +262,38 @@ export async function fetchGoogleTrending(geo = "US"): Promise<void> {
 	} catch (err) {
 		console.error("fetchGoogleTrending failed", err);
 	}
+}
+
+let trendingRequest: Promise<void> | undefined;
+
+// Both address fields share the feed, but own their selection and cancellation.
+export function fetchTrendingSuggestions(
+	setResults: (results: OmniboxResult[]) => void
+): () => void {
+	setResults([]);
+	if (!settingsService.settings.searchSuggestionsEnabled) return () => {};
+	const engine = settingsService.settings.defaultSearchEngine;
+	let cancelled = false;
+	trendingRequest ??= fetchGoogleTrending().finally(() => {
+		trendingRequest = undefined;
+	});
+	void trendingRequest.then(() => {
+		if (
+			cancelled ||
+			!settingsService.settings.searchSuggestionsEnabled ||
+			settingsService.settings.defaultSearchEngine !== engine
+		)
+			return;
+		setResults(
+			(trendingCached ?? []).slice(0, 3).map(({ title }) => ({
+				kind: "trending",
+				title,
+				url: searchUrl(title, engine),
+				favicon: null,
+			}))
+		);
+	});
+	return () => {
+		cancelled = true;
+	};
 }

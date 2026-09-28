@@ -2,9 +2,8 @@ import { createDelegate, css, type FC, type Delegate } from "dreamland/core";
 import { setContextMenu } from "@components/Menu";
 import { INTERNAL_URL_PROTOCOL } from "../../consts";
 import {
-	fetchGoogleTrending,
+	fetchTrendingSuggestions,
 	fetchSuggestions,
-	trendingCached,
 	type OmniboxResult,
 } from "./suggestions";
 import { trimUrl } from "./utils";
@@ -64,7 +63,7 @@ export function Omnibox(
 		}
 	>
 ) {
-	this.focusindex = 0;
+	this.focusindex = -1;
 	this.searchSuggestions = [];
 	this.value = "";
 	this.realvalue = "";
@@ -77,6 +76,9 @@ export function Omnibox(
 		cancelSuggestions();
 		unlock();
 		this.active = false;
+		this.searchSuggestions = [];
+		this.trendingSuggestions = [];
+		this.focusindex = -1;
 		document.body.removeEventListener("click", handleClickOutside);
 		document.body.removeEventListener("auxclick", handleClickOutside);
 	};
@@ -101,17 +103,25 @@ export function Omnibox(
 		}, 10);
 	});
 
-	use(this.realvalue).listen(() => {
+	const refreshSuggestions = () => {
 		cancelSuggestions();
-		if (!this.realvalue) {
+		this.trendingSuggestions = [];
+		if (!this.active) return;
+		if (!this.realvalue.trim()) {
 			this.searchSuggestions = [];
+			this.focusindex = -1;
+			if (this.url.href === `${INTERNAL_URL_PROTOCOL}//newtab`) {
+				cancelSuggestions = fetchTrendingSuggestions((results) => {
+					this.trendingSuggestions = results;
+				});
+			}
 			return;
 		}
-		this.trendingSuggestions = [];
 		const denied = this.suggestionDenied;
 		cancelSuggestions = fetchSuggestions(this.realvalue, denied, (results) => {
 			this.searchSuggestions = results;
-			if (this.focusindex >= results.length) this.focusindex = 0;
+			if (this.focusindex < 0 || this.focusindex >= results.length)
+				this.focusindex = results.length ? 0 : -1;
 			const first = results[0];
 			if (!first || denied || !this.active || this.focusindex !== 0) return;
 			const cursor = this.input.selectionStart;
@@ -136,24 +146,25 @@ export function Omnibox(
 			this.input.setSelectionRange(cursor, completion.length);
 		});
 		this.suggestionDenied = false;
-	});
+	};
+	use(this.realvalue).constrain(this).listen(refreshSuggestions);
 
 	use(
 		settingsService.settings.searchSuggestionsEnabled,
 		settingsService.settings.defaultSearchEngine
-	).listen(() => {
-		cancelSuggestions();
-		this.trendingSuggestions = [];
-		this.realvalue = this.realvalue;
-	});
+	)
+		.constrain(this)
+		.listen(refreshSuggestions);
 
-	use(this.url.href).listen(() => {
-		deactivate();
-		// when the url changes, clear whatever text the user might have had in the search box
-		this.value = "";
-		// also set realvalue to clear the search results
-		this.realvalue = "";
-	});
+	use(this.url.href)
+		.constrain(this)
+		.listen(() => {
+			deactivate();
+			// when the url changes, clear whatever text the user might have had in the search box
+			this.value = "";
+			// also set realvalue to clear the search results
+			this.realvalue = "";
+		});
 
 	const activate = () => {
 		this.subtleinput = false;
@@ -175,32 +186,8 @@ export function Omnibox(
 		this.justselected = true;
 		this.input.scrollLeft = 0;
 
-		if (this.url.href === `${INTERNAL_URL_PROTOCOL}//newtab`) {
-			// don't clutter the results if not on a newtab page
-			fetchGoogleTrending().then(() => {
-				// pick a random 3 from the cache
-				if (
-					!this.active ||
-					this.realvalue ||
-					!settingsService.settings.searchSuggestionsEnabled ||
-					settingsService.settings.defaultSearchEngine !== "google"
-				)
-					return;
-				this.trendingSuggestions = [...(trendingCached ?? [])]
-					.sort(() => 0.5 - Math.random())
-					.slice(0, 3)
-					.map((t) => ({
-						kind: "trending",
-						title: t.title,
-						url: new URL(
-							`https://www.google.com/search?q=${encodeURIComponent(t.title)}`
-						),
-						favicon: "https://www.google.com/favicon.ico",
-					}));
-			});
-		} else {
-			this.trendingSuggestions = [];
-		}
+		// Refresh on refocus as well as edits, including an empty new-tab field.
+		this.realvalue = this.value;
 	};
 
 	const navTo = (url: URL, newTab = false) => {
@@ -248,6 +235,10 @@ export function Omnibox(
 
 	return (
 		<div
+			on:focusout={(e: FocusEvent) => {
+				if (this.active && !this.root.contains(e.relatedTarget as Node | null))
+					deactivate();
+			}}
 			on:click={(e: MouseEvent) => {
 				if (this.active) {
 					e.preventDefault();
@@ -267,9 +258,15 @@ export function Omnibox(
 			></InactiveBar>
 			<div
 				class="overflow"
-				class:active={use(this.active, this.subtleinput).map(
-					([a, s]) => a && !s
+				class:active={use(
+					this.active,
+					this.searchSuggestions,
+					this.trendingSuggestions
+				).map(
+					([active, search, trending]) =>
+						active && search.length + trending.length > 0
 				)}
+				on:mousedown={(e: MouseEvent) => e.preventDefault()}
 			>
 				<div class="spacer"></div>
 				{use(this.searchSuggestions).mapEach((item) => (
@@ -287,7 +284,7 @@ export function Omnibox(
 				))}
 				{use(this.trendingSuggestions)
 					.map((s) => s.length > 0)
-					.and(<div class="spacertext">Trending Searches</div>)}
+					.and(<div class="spacertext">Trending searches</div>)}
 				{use(this.trendingSuggestions).mapEach((item) => (
 					<Suggestion
 						item={item}
@@ -383,10 +380,6 @@ export function Omnibox(
 					this.focusindex = 0;
 
 					this.realvalue = this.value;
-
-					if (this.value === "") {
-						this.subtleinput = true;
-					}
 				}}
 			></UrlInput>
 		</div>
@@ -409,7 +402,7 @@ Omnibox.style = css`
 		z-index: 0;
 		background: var(--toolbar_field);
 		border-radius: var(--radius-md);
-	    border: 1px solid var(--text-20);
+		border: 1px solid var(--text-20);
 	}
 
 	:scope.vertical-layout.active {
@@ -448,23 +441,19 @@ Omnibox.style = css`
 		width: 98%;
 		margin: 0 auto;
 
-		border-bottom: 1px solid
-			var(--text-35);
+		border-bottom: 1px solid var(--text-35);
 		margin-bottom: var(--space-md);
 	}
 
 	.spacertext {
 		display: block;
-		height: 2em;
-		line-height: var(--omnibar-height);
-		padding-left: var(--space-xxl);
+		line-height: 1.5;
+		padding: var(--space-sm) var(--space-xl);
 		color: var(--text-60);
 		font-size: 0.9em;
 	}
 
-
 	.overflow.active {
 		display: block;
 	}
-}
 `;

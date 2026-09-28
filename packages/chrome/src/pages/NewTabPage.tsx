@@ -1,7 +1,16 @@
 import { css, type FC } from "dreamland/core";
 import type { Tab } from "../Tab/Tab";
 import { trimUrl } from "@components/Omnibar/utils";
-import { AVAILABLE_SEARCH_ENGINES } from "@components/Omnibar/navigation";
+import {
+	AVAILABLE_SEARCH_ENGINES,
+	resolveNavigation,
+} from "@components/Omnibar/navigation";
+import {
+	fetchSuggestions,
+	fetchTrendingSuggestions,
+	type OmniboxResult,
+} from "@components/Omnibar/suggestions";
+import { Suggestion } from "@components/Omnibar/Suggestion";
 import { Icon } from "@components/Icon";
 import { iconSearch } from "../icons";
 import { TopSiteButton, type TopSiteEntry } from "@components/TopSiteButton";
@@ -67,8 +76,64 @@ function getTopSites(): TopSiteEntry[] {
 	return topSites;
 }
 
-export function NewTabPage(this: FC<{ tab: Tab }>) {
+export function NewTabPage(
+	this: FC<
+		{ tab: Tab },
+		{
+			input: HTMLInputElement;
+			active: boolean;
+			focusindex: number;
+			suggestions: OmniboxResult[];
+		}
+	>
+) {
 	const topSites = use(profileService.globalhistory).map(getTopSites);
+	const listId = `${this.tab.id}-newtab-suggestions`;
+	this.active = false;
+	this.focusindex = -1;
+	this.suggestions = [];
+	let cancelSuggestions = () => {};
+	let composing = false;
+
+	const dismiss = () => {
+		cancelSuggestions();
+		this.active = false;
+		this.focusindex = -1;
+		this.suggestions = [];
+	};
+	const refreshSuggestions = () => {
+		cancelSuggestions();
+		this.focusindex = -1;
+		if (!this.active || composing) return;
+		const setResults = (results: OmniboxResult[]) => {
+			const selected = this.suggestions[this.focusindex];
+			this.suggestions = results.slice(0, 8);
+			this.focusindex = selected
+				? this.suggestions.findIndex(
+						(item) => item.url.href === selected.url.href
+					)
+				: -1;
+		};
+		cancelSuggestions = this.input.value.trim()
+			? fetchSuggestions(this.input.value, false, setResults)
+			: fetchTrendingSuggestions(setResults);
+	};
+	const navigate = (url: URL, newTab = false) => {
+		dismiss();
+		if (newTab) tabsService.newTab(url);
+		else this.tab.pushNavigate(url);
+	};
+	const expanded = use(this.active, this.suggestions).map(
+		([active, suggestions]) => active && suggestions.length > 0
+	);
+
+	use(
+		settingsService.settings.defaultSearchEngine,
+		settingsService.settings.searchSuggestionsEnabled
+	)
+		.constrain(this)
+		.listen(refreshSuggestions);
+	use(this.tab.url.href, tabsService.activetab).constrain(this).listen(dismiss);
 
 	return (
 		<div>
@@ -77,18 +142,72 @@ export function NewTabPage(this: FC<{ tab: Tab }>) {
 				<h1>Browser</h1>
 			</div>
 			<div class="topbar">
-				<div class="inputcontainercontainer">
+				<div class="inputcontainercontainer" class:expanded={expanded}>
 					<div class="inputcontainer">
 						<div class="icon">
 							<Icon icon={iconSearch}></Icon>
 						</div>
 						<input
+							this={use(this.input)}
+							aria-label="Search or enter address"
+							role="combobox"
+							aria-autocomplete="list"
+							aria-expanded={expanded.map(String)}
+							aria-controls={listId}
+							aria-activedescendant={use(this.focusindex).map((index) =>
+								index >= 0 ? `${listId}-${index}` : undefined
+							)}
+							autocomplete="off"
+							spellcheck="false"
+							on:focus={() => {
+								this.active = true;
+								refreshSuggestions();
+							}}
+							on:blur={dismiss}
+							on:input={(e: InputEvent) => {
+								if (e.isComposing || composing) return;
+								this.active = true;
+								refreshSuggestions();
+							}}
+							on:compositionstart={() => {
+								composing = true;
+								dismiss();
+							}}
+							on:compositionend={() => {
+								composing = false;
+								if (document.activeElement !== this.input) return;
+								this.active = true;
+								refreshSuggestions();
+							}}
 							on:keydown={(e: KeyboardEvent) => {
-								if (e.key === "Enter" && !e.isComposing) {
+								if (e.isComposing || composing) return;
+								if (e.key === "Escape") {
 									e.preventDefault();
-									tabsService.searchNavigate(
-										(e.target as HTMLInputElement).value
-									);
+									dismiss();
+								} else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+									if (!this.active) {
+										this.active = true;
+										refreshSuggestions();
+									}
+									const length = this.suggestions.length;
+									if (!length) return;
+									e.preventDefault();
+									this.focusindex =
+										e.key === "ArrowDown"
+											? (this.focusindex + 1) % length
+											: (this.focusindex <= 0 ? length : this.focusindex) - 1;
+									this.root
+										.querySelector(`#${listId}-${this.focusindex}`)
+										?.scrollIntoView({ block: "nearest" });
+								} else if (e.key === "Enter") {
+									e.preventDefault();
+									const url =
+										this.suggestions[this.focusindex]?.url ??
+										resolveNavigation(
+											this.input.value,
+											settingsService.settings.defaultSearchEngine
+										);
+									if (url) navigate(url, e.altKey);
 								}
 							}}
 							placeholder={use(
@@ -99,6 +218,39 @@ export function NewTabPage(this: FC<{ tab: Tab }>) {
 							)}
 						></input>
 					</div>
+					{expanded.and(
+						<div
+							class="suggestions"
+							id={listId}
+							role="listbox"
+							aria-label="Address suggestions"
+							on:mousedown={(e: MouseEvent) => e.preventDefault()}
+						>
+							{use(this.suggestions)
+								.map((items) => items.some((item) => item.kind === "trending"))
+								.and(<div class="suggestions-heading">Trending searches</div>)}
+							{use(this.suggestions).mapEach((item, index) => (
+								<div
+									id={`${listId}-${index}`}
+									role="option"
+									aria-selected={use(this.focusindex).map((selected) =>
+										String(selected === index)
+									)}
+								>
+									<Suggestion
+										item={item}
+										input={this.input}
+										focused={use(this.focusindex).map(
+											(selected) => selected === index
+										)}
+										onClick={(e: MouseEvent) =>
+											navigate(item.url, e.ctrlKey || e.metaKey)
+										}
+									/>
+								</div>
+							))}
+						</div>
+					)}
 				</div>
 				{/*<div class="clock">
 					{new Date().toLocaleTimeString([], {
@@ -168,12 +320,11 @@ NewTabPage.style = css`
 	}
 
 	.inputcontainercontainer {
-		width: 100%;
-		display: flex;
-		justify-content: center;
+		width: min(100%, 42rem);
+		position: relative;
 	}
 	.inputcontainer {
-		width: min(100%, 42rem);
+		width: 100%;
 		min-height: 3rem;
 		background: var(--toolbar_field);
 		border: 1px solid var(--ntp-text-20);
@@ -192,9 +343,9 @@ NewTabPage.style = css`
 		color: var(--field-text-50);
 	}
 
-	.inputcontainer:focus-within {
-		border-color: var(--tab_line);
-		box-shadow: 0 0 0 2px var(--accent-20);
+	.inputcontainercontainer.expanded .inputcontainer {
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
 		outline: none;
 	}
 	input {
@@ -207,6 +358,30 @@ NewTabPage.style = css`
 		border: none;
 		color: var(--toolbar_field_text);
 		font-family: var(--font);
+		min-width: 0;
+	}
+
+	.suggestions {
+		position: absolute;
+		top: calc(100% - 1px);
+		left: 0;
+		width: 100%;
+		z-index: 2;
+		max-height: min(26rem, 50vh);
+		overflow-y: auto;
+		padding-top: var(--space-sm);
+		padding-bottom: var(--space-md);
+		background: var(--toolbar_field);
+		border: 1px solid var(--ntp-text-20);
+		border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+		box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+	}
+
+	.suggestions-heading {
+		padding: var(--space-sm) var(--space-xl);
+		color: var(--field-text-60);
+		font-size: 0.85rem;
+		line-height: 1.5;
 	}
 
 	input::placeholder {
