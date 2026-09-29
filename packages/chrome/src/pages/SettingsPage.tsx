@@ -27,13 +27,14 @@ import {
 	iconRefresh,
 	type IconDescription,
 } from "../icons";
-import { settingsService } from "..";
+import { profileService, settingsService } from "..";
 import {
 	INTERNAL_URL_PROTOCOL,
 	COMPANY_FULLNAME,
 	SOURCE_LOCATION,
 	PRODUCT_FULLNAME,
 } from "../consts";
+import { httpCache } from "../proxy/Controller";
 
 function ThemePreview(this: FC<{ theme: (typeof THEMES)[number] }>) {
 	const theme = this.theme;
@@ -1298,7 +1299,24 @@ export function SettingsPage(
 												</label>
 											</div>
 											<br />
-											<Button variant="primary">Clear Browsing Data...</Button>
+											{/* TODO: add a modal to select time range and data types */}
+											<Button
+												on:click={() => {
+													if (
+														confirm(
+															"Are you sure you want to clear your browsing data? This action cannot be undone."
+														)
+													) {
+														profileService.clearHistory();
+														profileService.cookieJar.clear();
+														httpCache.bust();
+														// window.location.reload();
+													}
+												}}
+												variant="primary"
+											>
+												Clear Browsing Data...
+											</Button>
 										</div>
 									</div>
 								</section>
