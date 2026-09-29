@@ -800,7 +800,11 @@ export function SettingsPage(
 			this.tab.history.replace(url, this.tab.title, null, false);
 	};
 	this.cx.mount = () => queueMicrotask(filter);
-	use(this.searchQuery).listen(() => queueMicrotask(filter));
+	use(
+		this.selected,
+		this.searchQuery,
+		settingsService.settings.tabLayout
+	).listen(() => queueMicrotask(filter));
 
 	const button = (id: string, icon: IconDescription, name: string) => {
 		return (
@@ -867,9 +871,12 @@ export function SettingsPage(
 							<p role="status">No settings found.</p>
 						) : null
 					)}
-					{/* General Tab */}
-					{use(this.selected, this.searchQuery).map(([selected, query]) =>
-						selected === "general" || query.trim() ? (
+					{use(this.selected, this.searchQuery)
+						.map(
+							([selected, query]) =>
+								selected === "general" || Boolean(query.trim())
+						)
+						.and(
 							<div class="settings-tab">
 								<section class="setting-section">
 									<div class="section-header">
@@ -958,72 +965,15 @@ export function SettingsPage(
 									</div>
 								</section>
 							</div>
-						) : null
-					)}
+						)}
 
-					{/* Appearance Tab */}
-					{use(this.selected, this.searchQuery).map(([selected, query]) =>
-						selected === "appearance" || query.trim() ? (
+					{use(this.selected, this.searchQuery)
+						.map(
+							([selected, query]) =>
+								selected === "appearance" || Boolean(query.trim())
+						)
+						.and(
 							<div class="settings-tab">
-								{/* <section class="setting-section">
-									<div class="section-header">
-										<h2>Page Appearance</h2>
-										<p class="description">
-											Control the appearance of websites you visit.
-										</p>
-									</div>
-									<div class="section-content">
-										<div class="setting-group">
-											<div class="radio-group">
-												<div class="radio-option">
-													<input
-														type="radio"
-														id="appearance-system"
-														name="appearance"
-														value="system"
-														checked={
-															settingsService.settings.appearance === "system"
-														}
-														on:change={() => {
-															settingsService.settings.appearance = "system";
-														}}
-													/>
-													<label for="appearance-system">System Default</label>
-												</div>
-												<div class="radio-option">
-													<input
-														type="radio"
-														id="appearance-dark"
-														name="appearance"
-														value="dark"
-														checked={
-															settingsService.settings.appearance === "dark"
-														}
-														on:change={() => {
-															settingsService.settings.appearance = "dark";
-														}}
-													/>
-													<label for="appearance-dark">Dark</label>
-												</div>
-												<div class="radio-option">
-													<input
-														type="radio"
-														id="appearance-light"
-														name="appearance"
-														value="light"
-														checked={
-															settingsService.settings.appearance === "light"
-														}
-														on:change={() => {
-															settingsService.settings.appearance = "light";
-														}}
-													/>
-													<label for="appearance-light">Light</label>
-												</div>
-											</div>
-										</div>
-									</div>
-								</section> */}
 								<section class="setting-section">
 									<div class="section-header">
 										<h2>Browser Layout (Beta)</h2>
@@ -1209,17 +1159,16 @@ export function SettingsPage(
 										</div>
 									</div>
 								</section>
-								{/* The style tweaks: independent axes of shape, motion and
-								    iconography. Coarse layout choices come first, so these
-								    read as a progression from structure down to detail. */}
 								{TWEAK_KEYS.map((key) => tweakSection(key))}
 							</div>
-						) : null
-					)}
+						)}
 
-					{/* Themes Tab */}
-					{use(this.selected, this.searchQuery).map(([selected, query]) =>
-						selected === "themes" || query.trim() ? (
+					{use(this.selected, this.searchQuery)
+						.map(
+							([selected, query]) =>
+								selected === "themes" || Boolean(query.trim())
+						)
+						.and(
 							<div class="settings-tab">
 								{themeSection(
 									"dark",
@@ -1232,12 +1181,14 @@ export function SettingsPage(
 									"Palettes with a light toolbar and tab strip."
 								)}
 							</div>
-						) : null
-					)}
+						)}
 
-					{/* Search Tab */}
-					{use(this.selected, this.searchQuery).map(([selected, query]) =>
-						selected === "search" || query.trim() ? (
+					{use(this.selected, this.searchQuery)
+						.map(
+							([selected, query]) =>
+								selected === "search" || Boolean(query.trim())
+						)
+						.and(
 							<div class="settings-tab">
 								<section class="setting-section">
 									<div class="section-header">
@@ -1286,12 +1237,14 @@ export function SettingsPage(
 									</div>
 								</section>
 							</div>
-						) : null
-					)}
+						)}
 
-					{/* Privacy Tab */}
-					{use(this.selected, this.searchQuery).map(([selected, query]) =>
-						selected === "privacy" || query.trim() ? (
+					{use(this.selected, this.searchQuery)
+						.map(
+							([selected, query]) =>
+								selected === "privacy" || Boolean(query.trim())
+						)
+						.and(
 							<div class="settings-tab">
 								<section class="setting-section">
 									<div class="section-header">
@@ -1350,10 +1303,8 @@ export function SettingsPage(
 									</div>
 								</section>
 							</div>
-						) : null
-					)}
+						)}
 
-					{/* Extensions Tab */}
 					{use(this.selected).map((selected) =>
 						selected === "extensions" ? (
 							<div class="settings-tab">
@@ -1415,9 +1366,12 @@ export function SettingsPage(
 						) : null
 					)}
 
-					{/* About Tab */}
-					{use(this.selected, this.searchQuery).map(([selected, query]) =>
-						selected === "about" || query.trim() ? (
+					{use(this.selected, this.searchQuery)
+						.map(
+							([selected, query]) =>
+								selected === "about" || Boolean(query.trim())
+						)
+						.and(
 							<div class="settings-tab">
 								<section class="setting-section">
 									<div class="section-header"></div>
@@ -1457,8 +1411,7 @@ export function SettingsPage(
 									</div>
 								</section>
 							</div>
-						) : null
-					)}
+						)}
 				</div>
 			</div>
 		</div>
