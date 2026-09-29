@@ -27,7 +27,7 @@ import {
 	iconRefresh,
 	type IconDescription,
 } from "../icons";
-import { profileService, settingsService } from "..";
+import { faviconService, profileService, settingsService } from "..";
 import {
 	INTERNAL_URL_PROTOCOL,
 	COMPANY_FULLNAME,
@@ -1310,6 +1310,7 @@ export function SettingsPage(
 														profileService.clearHistory();
 														profileService.cookieJar.clear();
 														httpCache.bust();
+														faviconService.clearCache();
 														// window.location.reload();
 													}
 												}}

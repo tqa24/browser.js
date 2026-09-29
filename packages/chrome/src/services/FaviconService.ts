@@ -51,6 +51,11 @@ export class FaviconService extends Service {
 		};
 	}
 
+	clearCache() {
+		this.faviconCache = [];
+		this.markDirty();
+	}
+
 	getCachedFavicon(hostname: string): FaviconCacheEntry | null {
 		const entry = this.faviconCache.find((e) => e.domain === hostname);
 		if (entry && entry.timestamp > Date.now() - FAVICON_CACHE_TTL) {
